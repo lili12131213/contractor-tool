@@ -3250,13 +3250,17 @@ function renderDashboard(){
 
 /* ---------------- 備份 ---------------- */
 function exportBackup(){
-  const data = { work, todo, money, appt, exportedAt: new Date().toISOString() };
+  const data = { work, todo, money, appt, employees, cases, quotes, progressSteps, materials, teams,
+    teamPayments, payments, changeOrders, caseLogs, warranties, warrantyClaims, waste, contracts,
+    exportedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = `統包工具備份_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 async function importBackup(){
@@ -3269,7 +3273,17 @@ async function importBackup(){
     try{
       const data = JSON.parse(e.target.result);
       work = data.work || []; todo = data.todo || []; money = data.money || []; appt = data.appt || [];
+      employees = data.employees || []; cases = data.cases || []; quotes = data.quotes || [];
+      progressSteps = data.progressSteps || []; materials = data.materials || []; teams = data.teams || [];
+      teamPayments = data.teamPayments || []; payments = data.payments || []; changeOrders = data.changeOrders || [];
+      caseLogs = data.caseLogs || []; warranties = data.warranties || []; warrantyClaims = data.warrantyClaims || [];
+      waste = data.waste || []; contracts = data.contracts || [];
       save(KEYS.work, work); save(KEYS.todo, todo); save(KEYS.money, money); save(KEYS.appt, appt);
+      save(KEYS.employees, employees); save(KEYS.cases, cases); save(KEYS.quotes, quotes);
+      save(KEYS.progress, progressSteps); save(KEYS.materials, materials); save(KEYS.teams, teams);
+      save(KEYS.teamPayments, teamPayments); save(KEYS.payments, payments); save(KEYS.changeOrders, changeOrders);
+      save(KEYS.caseLogs, caseLogs); save(KEYS.warranties, warranties); save(KEYS.warrantyClaims, warrantyClaims);
+      save(KEYS.waste, waste); save(KEYS.contracts, contracts);
       initAll();
       await customAlert('匯入成功！');
     }catch(err){
@@ -3283,9 +3297,10 @@ async function clearAll(){
   if(!ok1) return;
   const ok2 = await customConfirm('再次確認：真的要清空全部資料嗎？');
   if(!ok2) return;
-  localStorage.removeItem(KEYS.work); localStorage.removeItem(KEYS.todo);
-  localStorage.removeItem(KEYS.money); localStorage.removeItem(KEYS.appt);
-  work=[]; todo=[]; money=[]; appt=[];
+  Object.values(KEYS).forEach(k => localStorage.removeItem(k));
+  work=[]; todo=[]; money=[]; appt=[]; employees=[]; cases=[]; quotes=[]; progressSteps=[]; materials=[];
+  teams=[]; teamPayments=[]; payments=[]; changeOrders=[]; caseLogs=[]; warranties=[]; warrantyClaims=[];
+  waste=[]; contracts=[];
   initAll();
   await customAlert('已清空所有資料。');
 }
