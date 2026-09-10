@@ -1,0 +1,3312 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>統包工程管理工具</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#C9938A; --soft-pink:#E8C4BC; --light-pink:#F5E6E3;
+    --blue:#7A9BAD; --soft-blue:#B8CFDA; --light-blue:#E3EDF3;
+    --sage:#9AAE9B; --light-sage:#E8F0E8;
+    --cream:#FAF3EE; --bg:#FAFAF8; --dark:#37352F; --medium:#5A5248; --gray:#9B9A97;
+    --radius: 14px;
+    --shadow: 0 2px 10px rgba(55,53,47,0.06);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Noto Sans TC', sans-serif;
+    background:var(--bg);
+    color:var(--dark);
+    min-height:100vh;
+    display:flex;
+  }
+  .brand{
+    font-weight:900;
+    font-size:1.15rem;
+    color:var(--pink);
+    letter-spacing:.5px;
+  }
+  .brand span{display:block; font-weight:400; font-size:.72rem; color:var(--gray); margin-top:2px;}
+  .main{
+    margin-left:0;
+    flex:1;
+    min-width:0;
+    padding:24px 20px 40px 20px;
+    max-width:900px;
+    margin-inline:auto;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:14px 16px;
+    background:var(--cream);
+    border-bottom:1px solid var(--light-pink);
+    position:sticky; top:0; z-index:90;
+  }
+  .page{display:none; animation:fadeIn .2s ease;}
+  .page.active{display:block;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ---------- Topbar：漢堡按鈕 ---------- */
+  .hamburger-btn{
+    position:absolute; left:14px; top:50%; transform:translateY(-50%);
+    width:36px; height:36px;
+    display:flex; align-items:center; justify-content:center;
+    border:none; background:transparent; border-radius:10px;
+    font-size:1.3rem; color:var(--dark); cursor:pointer;
+  }
+  .hamburger-btn:hover{background:var(--light-pink);}
+  .topbar{position:sticky; top:0; z-index:90; position:relative;}
+
+  /* ---------- 側邊選單（抽屜式） ---------- */
+  .sidebar-overlay{
+    position:fixed; inset:0; background:rgba(55,53,47,0.35);
+    z-index:300;
+    opacity:0; pointer-events:none;
+    transition:opacity .2s ease;
+  }
+  .sidebar-overlay.show{opacity:1; pointer-events:auto;}
+  .sidebar{
+    position:fixed; top:0; left:0; bottom:0;
+    width:280px; max-width:82vw;
+    background:var(--light-pink);
+    z-index:301;
+    display:flex; flex-direction:column;
+    transform:translateX(-100%);
+    transition:transform .25s ease;
+    box-shadow:2px 0 16px rgba(55,53,47,0.15);
+  }
+  .sidebar.show{transform:translateX(0);}
+  .sidebar-header{
+    padding:24px 20px 18px;
+  }
+  .sidebar-header .sh-title{font-size:1.2rem; font-weight:900; color:var(--dark);}
+  .sidebar-header .sh-sub{font-size:.78rem; color:var(--gray); margin-top:4px;}
+  .sidebar-nav{
+    flex:1; overflow-y:auto;
+    padding:6px 12px 20px;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .sidebar-item{
+    display:flex; align-items:center; gap:14px;
+    padding:13px 12px;
+    border:none; background:transparent;
+    border-radius:12px;
+    font-family:inherit; font-size:1rem; color:var(--medium); font-weight:500;
+    text-align:left; cursor:pointer;
+    width:100%;
+  }
+  .sidebar-item .si-ic{font-size:1.2rem; line-height:1; width:22px; text-align:center;}
+  .sidebar-item:hover{background:rgba(255,255,255,0.5);}
+  .sidebar-item.active{
+    background:var(--pink); color:#fff; font-weight:700;
+  }
+
+  h1.pagetitle{font-size:1.5rem; font-weight:900; margin-bottom:4px;}
+  p.pagesub{color:var(--gray); font-size:.88rem; margin-bottom:24px;}
+
+  /* ---------- Cards / dashboard ---------- */
+  .grid-cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(180px,1fr));
+    gap:16px;
+    margin-bottom:28px;
+  }
+  .stat-card{
+    background:#fff;
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px;
+    border-left:5px solid var(--soft-pink);
+  }
+  .stat-card.blue{border-left-color:var(--soft-blue);}
+  .stat-card.sage{border-left-color:var(--sage);}
+  .stat-card .label{font-size:.78rem; color:var(--gray); margin-bottom:8px;}
+  .stat-card .value{font-size:1.65rem; font-weight:900; color:var(--dark);}
+  .stat-card .value.pink{color:var(--pink);}
+  .stat-card .value.blue{color:var(--blue);}
+  .stat-card .value.sage{color:var(--sage);}
+
+  .section-box{
+    background:#fff;
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:22px;
+    margin-bottom:20px;
+  }
+  .section-box h3{font-size:1rem; font-weight:700; margin-bottom:14px;}
+
+  /* ---------- Forms ---------- */
+  .form-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:12px;}
+  label{display:block; font-size:.8rem; color:var(--medium); margin-bottom:5px; font-weight:500;}
+  input, select, textarea{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--light-pink);
+    border-radius:10px;
+    font-family:inherit;
+    font-size:.9rem;
+    background:var(--bg);
+    color:var(--dark);
+  }
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--soft-pink); border-color:var(--pink);}
+  textarea{resize:vertical; min-height:70px;}
+
+  .btn{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:10px 20px;
+    border-radius:10px;
+    border:none;
+    font-family:inherit;
+    font-weight:700;
+    font-size:.88rem;
+    cursor:pointer;
+    transition:opacity .15s, transform .1s;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--pink); color:#fff;}
+  .btn-primary:hover{opacity:.9;}
+  .btn-secondary{background:var(--light-blue); color:var(--dark);}
+  .btn-outline{background:transparent; border:1px solid var(--gray); color:var(--medium);}
+  .btn-danger{background:var(--light-pink); color:#a3453a;}
+  .btn-sm{padding:6px 12px; font-size:.78rem;}
+
+  /* ---------- Table / list ---------- */
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; align-items:center;}
+  .toolbar input, .toolbar select{width:auto; min-width:150px;}
+  table{width:100%; border-collapse:collapse; font-size:.87rem;}
+  th{
+    text-align:left; padding:10px 12px; color:var(--gray);
+    font-weight:500; font-size:.78rem; border-bottom:2px solid var(--light-pink);
+  }
+  td{padding:12px; border-bottom:1px solid var(--light-pink); vertical-align:top;}
+  tr:hover td{background:var(--light-pink,#faf0ee); background:rgba(232,196,188,0.15);}
+  th:last-child, td:last-child{
+    position:sticky; right:0;
+    background:#fff;
+    box-shadow:-6px 0 8px -6px rgba(55,53,47,0.15);
+  }
+  tr:hover td:last-child{background:#f7ede9;}
+  thead th:last-child{background:#fff; box-shadow:none;}
+  .empty-state{
+    text-align:center; padding:40px 20px; color:var(--gray);
+  }
+  .empty-state .big{font-size:2rem; margin-bottom:8px;}
+
+  .tag{
+    display:inline-block; padding:3px 10px; border-radius:20px; font-size:.74rem; font-weight:700;
+  }
+  .tag.in{background:var(--light-sage); color:#4a6b4b;}
+  .tag.out{background:var(--light-pink); color:#a3453a;}
+  .tag.unpaid{background:#FDEEDB; color:#b8792f;}
+  .tag.done{background:var(--light-sage); color:#4a6b4b;}
+  .tag.pending{background:var(--light-blue); color:#3f6478;}
+
+  .checkbox-row{display:flex; align-items:center; gap:10px;}
+  .checkbox-row input[type=checkbox]{width:auto; accent-color:var(--pink);}
+
+  .note-card{
+    background:var(--light-blue);
+    border-radius:10px;
+    padding:12px 14px;
+    font-size:.8rem;
+    color:var(--medium);
+    margin-bottom:16px;
+    line-height:1.6;
+  }
+  .note-card b{color:var(--dark);}
+
+  .honesty{
+    background:var(--light-sage);
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:.76rem;
+    color:#4a6b4b;
+    margin-top:6px;
+  }
+
+  .row-actions{display:flex; gap:6px; flex-wrap:wrap;}
+
+  /* backup page */
+  .backup-box{display:flex; gap:14px; flex-wrap:wrap; align-items:center;}
+
+  @media (max-width: 880px){
+    .main{padding:20px 16px 40px 16px;}
+    .toolbar input, .toolbar select{min-width:120px; flex:1;}
+  }
+
+  /* ---------- 自訂確認/提示視窗（取代瀏覽器原生 confirm/alert，避免在預覽環境被擋掉） ---------- */
+  .modal-overlay{
+    position:fixed; inset:0;
+    background:rgba(55,53,47,0.35);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:999;
+    padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-box{
+    background:#fff;
+    border-radius:var(--radius);
+    box-shadow:0 8px 30px rgba(55,53,47,0.2);
+    padding:24px;
+    max-width:360px;
+    width:100%;
+  }
+  .modal-box p{font-size:.92rem; color:var(--dark); line-height:1.6; margin-bottom:20px; white-space:pre-line;}
+  .modal-box .row-actions{justify-content:flex-end;}
+
+  /* ---------- 案件卡片 ---------- */
+  .case-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(280px,1fr));
+    gap:16px;
+  }
+  .case-card{
+    background:#fff;
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px;
+    border-top:4px solid var(--soft-pink);
+  }
+  .case-card.status-quote{border-top-color:var(--soft-blue);}
+  .case-card.status-progress{border-top-color:var(--soft-pink);}
+  .case-card.status-done{border-top-color:var(--sage);}
+  .case-card .case-title{font-size:1.05rem; font-weight:900; margin-bottom:2px;}
+  .case-card .case-sub{font-size:.78rem; color:var(--gray); margin-bottom:14px;}
+  .case-card .case-row{display:flex; justify-content:space-between; font-size:.85rem; padding:5px 0; color:var(--medium);}
+  .case-card .case-row b{color:var(--dark);}
+  .case-card .case-row.profit b{color:var(--sage);}
+  .progress-bar-track{
+    width:100%; height:8px; border-radius:6px;
+    background:var(--light-pink);
+    overflow:hidden;
+    margin:10px 0 4px;
+  }
+  .progress-bar-fill{
+    height:100%; background:var(--pink); border-radius:6px;
+    transition:width .3s ease;
+  }
+  .progress-label{font-size:.76rem; color:var(--gray); text-align:right; margin-bottom:12px;}
+
+  /* ---------- 案件詳情頁分頁籤 ---------- */
+  .cd-tabbar{
+    display:flex; flex-wrap:wrap; gap:6px;
+    margin-bottom:16px;
+    padding-bottom:4px;
+  }
+  .cd-tab{
+    padding:6px 13px;
+    border:1.5px solid var(--light-pink); border-radius:999px;
+    background:#fff;
+    font-family:inherit; font-size:.76rem; font-weight:500;
+    color:var(--medium); cursor:pointer;
+    white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .cd-tab:hover{border-color:var(--soft-pink); color:var(--pink);}
+  .cd-tab.active{background:var(--pink); border-color:var(--pink); color:#fff; font-weight:700;}
+  .cd-tabpanel{display:none;}
+  .cd-tabpanel.active{display:block;}
+  .cd-overview-hero{
+    background:linear-gradient(135deg, var(--light-pink), var(--light-blue));
+    border-radius:var(--radius);
+    padding:24px;
+    margin-bottom:20px;
+  }
+  .cd-overview-hero .hero-label{font-size:.82rem; color:var(--medium); margin-bottom:6px;}
+  .cd-overview-hero .hero-value{font-size:2.2rem; font-weight:900;}
+  .cd-overview-hero .hero-value.positive{color:#4a6b4b;}
+  .cd-overview-hero .hero-value.negative{color:#a3453a;}
+</style>
+</head>
+<body>
+
+<div style="flex:1; min-width:0;">
+  <div class="topbar">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="開啟選單">☰</button>
+    <div class="brand" style="padding:0; font-size:1rem;">統包管理</div>
+  </div>
+
+  <main class="main">
+
+    <!-- ============ 儀表板 ============ -->
+    <section class="page active" id="page-dashboard">
+      <h1 class="pagetitle">儀表板</h1>
+      <p class="pagesub">這個月的關鍵數字，一眼看完</p>
+      <div class="grid-cards" id="dashCards"></div>
+
+      <div class="section-box">
+        <h3>近期待辦</h3>
+        <div id="dashTodoPreview"></div>
+      </div>
+      <div class="section-box">
+        <h3>近期預約</h3>
+        <div id="dashApptPreview"></div>
+      </div>
+    </section>
+
+    <!-- ============ 案件管理 ============ -->
+    <section class="page" id="page-case">
+      <h1 class="pagetitle">案件管理</h1>
+      <p class="pagesub">每個工程案件的基本資料、金額與進度</p>
+
+      <div class="note-card">
+        ⚠️ <b>提醒：</b>這裡會存客戶姓名、電話、地址，屬於個人資料。<br>
+        測試與展示時請一律使用假資料（例如：王小明 / 0912-345-678），不要輸入真實客戶資料。
+      </div>
+
+      <div class="section-box">
+        <h3 id="cFormTitle">新增案件</h3>
+        <div class="form-row">
+          <div><label>客戶姓名</label><input type="text" id="cCustomer" placeholder="王小明"></div>
+          <div><label>電話（選填）</label><input type="text" id="cPhone" placeholder="0912-345-678"></div>
+        </div>
+        <div class="form-row">
+          <div><label>案件名稱／工程項目</label><input type="text" id="cName" placeholder="例如：衛浴翻修"></div>
+          <div><label>工程地址（選填）</label><input type="text" id="cAddress" placeholder="施工地址"></div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label>狀態</label>
+            <select id="cStatus">
+              <option value="quote">報價中</option>
+              <option value="progress">施工中</option>
+              <option value="done">已完工</option>
+            </select>
+          </div>
+          <div><label>預計完工日（選填）</label><input type="date" id="cDueDate"></div>
+          <div><label>施工進度（%）</label><input type="number" id="cProgress" min="0" max="100" placeholder="0～100"></div>
+        </div>
+        <div class="form-row">
+          <div><label>工程總價</label><input type="number" id="cContract" placeholder="例如 180000"></div>
+          <div><label>目前已收（選填，之後可跟收支記錄連動）</label><input type="number" id="cReceived" placeholder="例如 100000"></div>
+          <div><label>其他成本（選填，材料/工班/清運以外的零星開銷）</label><input type="number" id="cOtherCost" placeholder="例如 5000"></div>
+        </div>
+        <div class="note-card" style="background:var(--light-blue);">
+          💡 目前成本會自動加總「材料採購＋工班工資＋清運費用＋上面填的其他成本」，不用手動輸入。
+        </div>
+        <div class="form-row">
+          <div style="grid-column:1/-1;"><label>備註（選填）</label><textarea id="cNote" placeholder="其他補充事項"></textarea></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="cSubmitBtn" onclick="addCase()">＋ 新增案件</button>
+          <button class="btn btn-outline" id="cCancelBtn" style="display:none;" onclick="cancelEditCase()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <h3 style="margin-bottom:0;">案件清單</h3>
+          <select id="cFilterStatus" onchange="renderCases()">
+            <option value="all">全部狀態</option>
+            <option value="quote">報價中</option>
+            <option value="progress">施工中</option>
+            <option value="done">已完工</option>
+          </select>
+          <input type="text" id="cSearch" placeholder="搜尋客戶/案件名稱…" oninput="renderCases()">
+        </div>
+        <div class="case-grid" id="caseGrid"></div>
+        <div class="empty-state" id="caseEmpty" style="display:none;">
+          <div class="big">🏗️</div>目前還沒有案件，加入第一筆看看吧
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 案件詳情頁 ============ -->
+    <section class="page" id="page-casedetail">
+      <button class="btn btn-outline btn-sm" onclick="showPage('case')" style="margin-bottom:16px;">← 回我的案件</button>
+      <div id="cdOverview"></div>
+
+      <div class="cd-tabbar">
+        <button class="cd-tab active" data-tab="overview" onclick="switchDetailTab('overview')">💰 概況</button>
+        <button class="cd-tab" data-tab="log" onclick="switchDetailTab('log')">📔 日誌</button>
+        <button class="cd-tab" data-tab="warranty" onclick="switchDetailTab('warranty')">🛡️ 保固</button>
+        <button class="cd-tab" data-tab="waste" onclick="switchDetailTab('waste')">🚚 清運</button>
+        <button class="cd-tab" data-tab="changeorder" onclick="switchDetailTab('changeorder')">➕ 追加</button>
+        <button class="cd-tab" data-tab="payment" onclick="switchDetailTab('payment')">💵 收款</button>
+        <button class="cd-tab" data-tab="contract" onclick="switchDetailTab('contract')">📄 合約</button>
+      </div>
+
+      <div class="cd-tabpanel active" id="cdPanel-overview"></div>
+<div class="cd-tabpanel" id="cdPanel-log">
+      <input type="hidden" id="clCase">
+      <div class="section-box">
+        <h3 id="clFormTitle">新增一筆記錄</h3>
+        <div class="form-row">
+          <div><label>日期</label><input type="date" id="clDate"></div>
+          <div>
+            <label>記錄類型</label>
+            <select id="clType" onchange="toggleCaseLogFields()">
+              <option value="daily">📝 工程日誌</option>
+              <option value="issue">⚠️ 問題／異常</option>
+              <option value="change">✏️ 客戶變更</option>
+              <option value="contact">👤 客戶聯絡</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="clFields-daily" class="cl-fields">
+          <div class="form-row">
+            <div style="grid-column:1/-1;"><label>今日工程</label><input type="text" id="clDailyWork" placeholder="例如：浴室拆除"></div>
+          </div>
+          <div class="form-row">
+            <div style="grid-column:1/-1;"><label>工作人員</label><input type="text" id="clDailyWorkers" placeholder="例如：水電阿明、泥作小陳"></div>
+          </div>
+          <div class="form-row">
+            <div style="grid-column:1/-1;"><label>今日完成</label><input type="text" id="clDailyDone" placeholder="例如：舊設備拆除"></div>
+          </div>
+          <div class="form-row">
+            <div style="grid-column:1/-1;"><label>現場問題（選填）</label><input type="text" id="clDailyIssue" placeholder="例如：發現牆內管線老化"></div>
+          </div>
+          <div class="form-row">
+            <div style="grid-column:1/-1;"><label>明日工作（選填）</label><input type="text" id="clDailyTomorrow" placeholder="例如：重新配管"></div>
+          </div>
+        </div>
+
+        <div id="clFields-issue" class="cl-fields" style="display:none;">
+          <div class="form-row">
+            <div style="grid-column:1/-1;"><label>問題標題</label><input type="text" id="clIssueTitle" placeholder="例如：發現漏水、材料缺貨、工班延遲"></div>
+          </div>
+          <div class="form-row">
+            <div style="grid-column:1/-1;"><label>問題描述（選填）</label><textarea id="clIssueDesc" placeholder="詳細說明"></textarea></div>
+          </div>
+          <div class="form-row">
+            <div style="grid-column:1/-1;"><label>處理方式（選填）</label><input type="text" id="clIssueFix" placeholder="怎麼解決的"></div>
+          </div>
+          <div class="form-row">
+            <div class="checkbox-row"><input type="checkbox" id="clIssueExtra"><label style="margin:0;" for="clIssueExtra">會產生追加費用</label></div>
+            <div><input type="number" id="clIssueExtraAmount" placeholder="追加金額"></div>
+            <div class="checkbox-row"><input type="checkbox" id="clIssueNotified"><label style="margin:0;" for="clIssueNotified">已通知客戶</label></div>
+          </div>
+        </div>
+
+        <div id="clFields-change" class="cl-fields" style="display:none;">
+          <div class="form-row">
+            <div><label>原方案</label><input type="text" id="clChangeOld" placeholder="例如：白色磁磚"></div>
+            <div><label>修改後方案</label><input type="text" id="clChangeNew" placeholder="例如：灰色磁磚"></div>
+          </div>
+          <div class="form-row">
+            <div><label>原價</label><input type="number" id="clChangeOldCost" placeholder="例如 20000"></div>
+            <div><label>修改後價格</label><input type="number" id="clChangeNewCost" placeholder="例如 27000"></div>
+          </div>
+          <div class="form-row">
+            <div class="checkbox-row"><input type="checkbox" id="clChangeConfirmed"><label style="margin:0;" for="clChangeConfirmed">客戶確認</label></div>
+            <div class="checkbox-row"><input type="checkbox" id="clChangeNotified"><label style="margin:0;" for="clChangeNotified">已通知</label></div>
+            <div class="checkbox-row"><input type="checkbox" id="clChangeCharged"><label style="margin:0;" for="clChangeCharged">已收費</label></div>
+          </div>
+        </div>
+
+        <div id="clFields-contact" class="cl-fields" style="display:none;">
+          <div class="form-row">
+            <div>
+              <label>聯絡方式</label>
+              <select id="clContactMethod">
+                <option value="電話">📞 電話</option>
+                <option value="LINE">💬 LINE</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div style="grid-column:1/-1;"><label>聯絡內容</label><input type="text" id="clContactContent" placeholder="例如：確認開工日期、客戶要求更換磁磚"></div>
+          </div>
+        </div>
+
+        <div class="row-actions">
+          <button class="btn btn-primary" id="clSubmitBtn" onclick="addCaseLog()">＋ 新增記錄</button>
+          <button class="btn btn-outline" id="clCancelBtn" style="display:none;" onclick="cancelEditCaseLog()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <h3 style="margin-bottom:0;">時間軸</h3>
+          <select id="clFilterType" onchange="renderCaseLogs()">
+            <option value="all">全部類型</option>
+            <option value="daily">📝 工程日誌</option>
+            <option value="issue">⚠️ 問題／異常</option>
+            <option value="change">✏️ 客戶變更</option>
+            <option value="contact">👤 客戶聯絡</option>
+          </select>
+        </div>
+        <div id="caseLogList"></div>
+        <div class="empty-state" id="caseLogEmpty" style="display:none;">
+          <div class="big">📔</div>目前還沒有任何記錄
+        </div>
+      </div>
+    </div>
+<div class="cd-tabpanel" id="cdPanel-warranty">
+      <input type="hidden" id="wrCase">
+      <input type="hidden" id="wcCase">
+      <div class="section-box">
+        <h3 id="wrFormTitle">新增保固紀錄</h3>
+        <div class="form-row">
+          <div><label>完工日</label><input type="date" id="wrCompletionDate"></div>
+          <div><label>保固期間（月）</label><input type="number" id="wrMonths" placeholder="例如 12"></div>
+        </div>
+        <div class="form-row">
+          <div style="grid-column:1/-1;"><label>備註（選填）</label><input type="text" id="wrNote" placeholder="保固範圍說明"></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="wrSubmitBtn" onclick="addWarranty()">＋ 新增保固紀錄</button>
+          <button class="btn btn-outline" id="wrCancelBtn" style="display:none;" onclick="cancelEditWarranty()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3>保固清單</h3>
+        <div id="warrantyList"></div>
+        <div class="empty-state" id="warrantyEmpty" style="display:none;">
+          <div class="big">🛡️</div>目前還沒有保固紀錄
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3 id="wcFormTitle">新增保固維修紀錄</h3>
+        <div class="form-row">
+          <div><label>日期</label><input type="date" id="wcDate"></div>
+        </div>
+        <div class="form-row">
+          <div style="grid-column:1/-1;"><label>問題描述</label><input type="text" id="wcDesc" placeholder="客戶回報的保固問題"></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="wcSubmitBtn" onclick="addWarrantyClaim()">＋ 新增維修紀錄</button>
+          <button class="btn btn-outline" id="wcCancelBtn" style="display:none;" onclick="cancelEditWarrantyClaim()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3>保固維修紀錄清單</h3>
+        <div id="warrantyClaimList"></div>
+        <div class="empty-state" id="warrantyClaimEmpty" style="display:none;">
+          <div class="big">🔧</div>目前還沒有保固維修紀錄
+        </div>
+      </div>
+    </div>
+<div class="cd-tabpanel" id="cdPanel-waste">
+      <input type="hidden" id="wsCase">
+      <div class="section-box">
+        <h3 id="wsFormTitle">新增清運紀錄</h3>
+        <div class="form-row">
+          <div><label>廢棄物種類</label><input type="text" id="wsType" placeholder="例如：磁磚碎料、木料"></div>
+          <div><label>預估數量</label><input type="text" id="wsQty" placeholder="例如：1台車、500公斤"></div>
+        </div>
+        <div class="form-row">
+          <div><label>清運日期</label><input type="date" id="wsDate"></div>
+          <div><label>清運業者（選填）</label><input type="text" id="wsVendor" placeholder="業者名稱"></div>
+          <div><label>清運費</label><input type="number" id="wsFee" placeholder="例如 3000"></div>
+        </div>
+        <div class="checkbox-row" style="margin-bottom:14px;">
+          <input type="checkbox" id="wsPaid"><label style="margin:0;" for="wsPaid">已付款</label>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="wsSubmitBtn" onclick="addWaste()">＋ 新增清運紀錄</button>
+          <button class="btn btn-outline" id="wsCancelBtn" style="display:none;" onclick="cancelEditWaste()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3 style="margin-bottom:10px;">清運紀錄清單</h3>
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>日期</th><th>種類</th><th>數量</th><th>業者</th><th>費用</th><th>狀態</th><th></th></tr></thead>
+          <tbody id="wasteTableBody"></tbody>
+        </table>
+        </div>
+        <div class="empty-state" id="wasteEmpty" style="display:none;">
+          <div class="big">🚚</div>目前還沒有清運紀錄
+        </div>
+      </div>
+    </div>
+<div class="cd-tabpanel" id="cdPanel-payment">
+      <input type="hidden" id="payCase">
+      <div class="section-box">
+        <h3 id="payFormTitle">新增收款期別</h3>
+        <div class="form-row">
+          <div><label>期別名稱</label><input type="text" id="payName" placeholder="例如：訂金、第二期、尾款"></div>
+          <div><label>金額</label><input type="number" id="payAmount" placeholder="例如 50000"></div>
+        </div>
+        <div class="checkbox-row" style="margin-bottom:14px;">
+          <input type="checkbox" id="payReceived"><label style="margin:0;" for="payReceived">已收款</label>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="paySubmitBtn" onclick="addPayment()">＋ 新增期別</button>
+          <button class="btn btn-outline" id="payCancelBtn" style="display:none;" onclick="cancelEditPayment()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3 style="margin-bottom:10px;">收款清單</h3>
+        <div id="paymentList"></div>
+        <div class="empty-state" id="paymentEmpty" style="display:none;">
+          <div class="big">💵</div>目前還沒有收款記錄
+        </div>
+      </div>
+    </div>
+<div class="cd-tabpanel" id="cdPanel-changeorder">
+      <input type="hidden" id="coCase">
+      <div class="section-box">
+        <h3 id="coFormTitle">新增追加項目</h3>
+        <div class="form-row">
+          <div><label>項目名稱</label><input type="text" id="coName" placeholder="例如：衛浴升級、增加插座"></div>
+          <div><label>金額</label><input type="number" id="coAmount" placeholder="例如 15000"></div>
+        </div>
+        <div class="checkbox-row" style="margin-bottom:14px;">
+          <input type="checkbox" id="coConfirmed"><label style="margin:0;" for="coConfirmed">客戶已確認 ☑️</label>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="coSubmitBtn" onclick="addChangeOrder()">＋ 新增追加項目</button>
+          <button class="btn btn-outline" id="coCancelBtn" style="display:none;" onclick="cancelEditChangeOrder()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3 style="margin-bottom:10px;">追加項目清單</h3>
+        <div id="changeOrderTotal" style="margin-bottom:10px; font-weight:700; color:var(--blue);"></div>
+        <div id="changeOrderList"></div>
+        <div class="empty-state" id="changeOrderEmpty" style="display:none;">
+          <div class="big">➕</div>目前還沒有追加項目
+        </div>
+      </div>
+    </div>
+<div class="cd-tabpanel" id="cdPanel-contract">
+      <div class="note-card">
+        📎 這裡先做「文件清單追蹤」（哪些文件已產生/已簽署/存放在哪），還不能真的上傳檔案——原因是本機儲存放不下檔案，等之後正式部署才能做真的檔案上傳。
+      </div>
+      <div class="section-box">
+        <h3 id="ctFormTitle">新增文件記錄</h3>
+        <div class="form-row">
+          <div><label>文件名稱</label><input type="text" id="ctName" placeholder="例如：報價單、合約、完工驗收單"></div>
+          <div>
+            <label>狀態</label>
+            <select id="ctStatus">
+              <option value="draft">未產生</option>
+              <option value="created">已產生</option>
+              <option value="signed">已簽署</option>
+              <option value="sent">已寄出</option>
+              <option value="archived">已歸檔</option>
+            </select>
+          </div>
+          <div><label>日期（選填）</label><input type="date" id="ctDate"></div>
+        </div>
+        <div class="form-row">
+          <div style="grid-column:1/-1;"><label>備註（選填，例如存放位置）</label><input type="text" id="ctNote" placeholder="例如：正本在客戶那邊、存在LINE相簿"></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="ctSubmitBtn" onclick="addContract()">＋ 新增文件記錄</button>
+          <button class="btn btn-outline" id="ctCancelBtn" style="display:none;" onclick="cancelEditContract()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3 style="margin-bottom:10px;">文件清單</h3>
+        <div id="contractList"></div>
+        <div class="empty-state" id="contractEmpty" style="display:none;">
+          <div class="big">📄</div>目前還沒有文件記錄
+        </div>
+      </div>
+    </div>
+    </section>
+
+    <!-- ============ 案件日誌 ============ -->
+    
+
+    <!-- ============ 報價管理 ============ -->
+    <section class="page" id="page-quote">
+      <h1 class="pagetitle">報價管理</h1>
+      <p class="pagesub">選擇案件，列出報價項目，自動加總</p>
+
+      <div class="section-box">
+        <h3>新增報價單</h3>
+        <div class="form-row">
+          <div><label>所屬案件</label><select id="qCase"></select></div>
+          <div><label>報價日期</label><input type="date" id="qDate"></div>
+        </div>
+        <div id="qItemsContainer" style="margin-bottom:12px;"></div>
+        <button class="btn btn-secondary btn-sm" onclick="addQuoteItemRow()">＋ 新增項目</button>
+        <div style="text-align:right; font-weight:900; font-size:1.1rem; margin:14px 0; color:var(--pink);">
+          報價總額：<span id="qTotalDisplay">NT$ 0</span>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="qSubmitBtn" onclick="addQuote()">＋ 儲存報價單</button>
+          <button class="btn btn-outline" id="qCancelBtn" style="display:none;" onclick="cancelEditQuote()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <h3 style="margin-bottom:0;">報價單清單</h3>
+          <select id="qFilterCase" onchange="renderQuotes()"><option value="all">全部案件</option></select>
+        </div>
+        <div id="quoteList"></div>
+        <div class="empty-state" id="quoteEmpty" style="display:none;">
+          <div class="big">📝</div>目前還沒有報價單
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 工程進度 ============ -->
+    <section class="page" id="page-progress">
+      <h1 class="pagetitle">工程進度</h1>
+      <p class="pagesub">每個案件的施工階段清單，跟一般待辦事項不同</p>
+
+      <div class="section-box">
+        <h3 id="pgFormTitle">新增進度項目</h3>
+        <div class="form-row">
+          <div><label>所屬案件</label><select id="pgCase"></select></div>
+          <div><label>階段名稱</label><input type="text" id="pgName" placeholder="例如：拆除、水電、泥作"></div>
+          <div>
+            <label>狀態</label>
+            <select id="pgStatus">
+              <option value="pending">⏳ 待處理</option>
+              <option value="doing">🔄 進行中</option>
+              <option value="done">✅ 已完成</option>
+            </select>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="pgSubmitBtn" onclick="addProgress()">＋ 新增階段</button>
+          <button class="btn btn-outline" id="pgCancelBtn" style="display:none;" onclick="cancelEditProgress()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <h3 style="margin-bottom:0;">進度清單</h3>
+          <select id="pgFilterCase" onchange="renderProgress()"><option value="all">全部案件</option></select>
+        </div>
+        <div id="progressList"></div>
+        <div class="empty-state" id="progressEmpty" style="display:none;">
+          <div class="big">📅</div>目前還沒有進度項目
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 材料採購 ============ -->
+    <section class="page" id="page-material">
+      <h1 class="pagetitle">材料採購</h1>
+      <p class="pagesub">記錄材料、數量、單價、供應商，並連到案件成本</p>
+
+      <div class="section-box">
+        <h3 id="matFormTitle">新增材料</h3>
+        <div class="form-row">
+          <div><label>所屬案件</label><select id="matCase"></select></div>
+          <div><label>材料名稱</label><input type="text" id="matName" placeholder="例如：水泥、磁磚"></div>
+          <div><label>供應商（選填）</label><input type="text" id="matSupplier" placeholder="例如：某某建材行"></div>
+        </div>
+        <div class="form-row">
+          <div><label>數量</label><input type="number" id="matQty" placeholder="例如 10"></div>
+          <div><label>單價</label><input type="number" id="matPrice" placeholder="例如 350"></div>
+        </div>
+        <div class="form-row">
+          <div class="checkbox-row"><input type="checkbox" id="matPaid"><label style="margin:0;" for="matPaid">已付款</label></div>
+          <div class="checkbox-row"><input type="checkbox" id="matDelivered"><label style="margin:0;" for="matDelivered">已到貨</label></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="matSubmitBtn" onclick="addMaterial()">＋ 新增材料</button>
+          <button class="btn btn-outline" id="matCancelBtn" style="display:none;" onclick="cancelEditMaterial()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <h3 style="margin-bottom:0;">材料清單</h3>
+          <select id="matFilterCase" onchange="renderMaterials()"><option value="all">全部案件</option></select>
+        </div>
+        <div id="materialCaseTotal" style="margin-bottom:10px; font-size:.88rem; color:var(--medium);"></div>
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>案件</th><th>材料</th><th>供應商</th><th>數量</th><th>單價</th><th>小計</th><th>狀態</th><th></th></tr></thead>
+          <tbody id="materialTableBody"></tbody>
+        </table>
+        </div>
+        <div class="empty-state" id="materialEmpty" style="display:none;">
+          <div class="big">📦</div>目前還沒有材料紀錄
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 工班管理 ============ -->
+    <section class="page" id="page-team">
+      <h1 class="pagetitle">工班管理</h1>
+      <p class="pagesub">水電、泥作、木工等工班名單與工資記錄</p>
+
+      <div class="section-box">
+        <h3>工班名單</h3>
+        <div class="form-row">
+          <div><label>工班名稱</label><input type="text" id="teamName" placeholder="例如：水電、泥作、木工"></div>
+          <div><label>聯絡電話（選填）</label><input type="text" id="teamPhone" placeholder="0912-345-678"></div>
+        </div>
+        <button class="btn btn-secondary" onclick="addTeam()">＋ 新增工班</button>
+        <div id="teamChips" style="margin-top:14px; display:flex; flex-wrap:wrap; gap:8px;"></div>
+      </div>
+
+      <div class="section-box">
+        <h3 id="tmFormTitle">新增工資記錄</h3>
+        <div class="form-row">
+          <div><label>工班</label><select id="tmTeam"></select></div>
+          <div><label>所屬案件（選填）</label><select id="tmCase"><option value="">未指定</option></select></div>
+          <div><label>日期</label><input type="date" id="tmDate"></div>
+        </div>
+        <div class="form-row">
+          <div><label>金額</label><input type="number" id="tmAmount" placeholder="例如 20000"></div>
+          <div class="checkbox-row"><input type="checkbox" id="tmPaid"><label style="margin:0;" for="tmPaid">已付款</label></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="tmSubmitBtn" onclick="addTeamPayment()">＋ 新增記錄</button>
+          <button class="btn btn-outline" id="tmCancelBtn" style="display:none;" onclick="cancelEditTeamPayment()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <h3 style="margin-bottom:0;">工資記錄清單</h3>
+          <select id="tmFilterTeam" onchange="renderTeamPayments()"><option value="all">全部工班</option></select>
+        </div>
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>日期</th><th>工班</th><th>案件</th><th>金額</th><th>狀態</th><th></th></tr></thead>
+          <tbody id="teamPaymentTableBody"></tbody>
+        </table>
+        </div>
+        <div class="empty-state" id="teamPaymentEmpty" style="display:none;">
+          <div class="big">👷</div>目前還沒有工資記錄
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 保固／清運 ============ -->
+    
+
+    
+
+    <!-- ============ 工時與薪水 ============ -->
+    <section class="page" id="page-work">
+      <h1 class="pagetitle">工時與薪水</h1>
+      <p class="pagesub">按鈕打卡，自動用員工時薪算薪水</p>
+
+      <div class="section-box">
+        <h3>員工名單（含時薪）</h3>
+        <div class="form-row">
+          <div><label>新增員工姓名</label><input type="text" id="empName" placeholder="例如：王小明"></div>
+          <div><label>時薪</label><input type="number" id="empRate" placeholder="例如 250"></div>
+        </div>
+        <button class="btn btn-secondary" onclick="addEmployee()">＋ 新增員工</button>
+        <div id="employeeChips" style="margin-top:14px; display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <div class="section-box">
+        <h3>今日打卡</h3>
+        <div class="form-row">
+          <div><label>選擇員工</label><select id="clockEmployee" onchange="renderClockStatus()"></select></div>
+        </div>
+        <div id="clockStatusHero" style="background:linear-gradient(135deg, var(--light-pink), var(--light-blue)); border-radius:var(--radius); padding:20px; text-align:center; margin:12px 0;"></div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="clockInBtn" onclick="doClockIn()" style="flex:1;">🟢 上班</button>
+          <button class="btn btn-danger" id="clockOutBtn" onclick="doClockOut()" style="flex:1;">🔴 下班</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3 id="wFormTitle">手動新增／補登記</h3>
+        <div class="form-row">
+          <div>
+            <label>員工</label>
+            <select id="wEmployee"></select>
+          </div>
+          <div><label>日期</label><input type="date" id="wDate"></div>
+          <div>
+            <label>類型</label>
+            <select id="wType" onchange="toggleWorkType()">
+              <option value="work">上班</option>
+              <option value="leave">休假</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row" id="wWorkFields">
+          <div><label>上班時間</label><input type="time" id="wStart"></div>
+          <div><label>下班時間</label><input type="time" id="wEnd"></div>
+        </div>
+        <div class="form-row" id="wLeaveFields" style="display:none;">
+          <div>
+            <label>類型</label>
+            <select id="wLeaveType">
+              <option value="特休">特休</option>
+              <option value="休假">休假</option>
+              <option value="事假">事假</option>
+              <option value="病假">病假</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div><label>備註（工地/案場/請假原因，選填）</label><input type="text" id="wNote" placeholder="例如：某某工地 / 家中有事"></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="wSubmitBtn" onclick="addWork()">＋ 新增紀錄</button>
+          <button class="btn btn-outline" id="wCancelBtn" style="display:none;" onclick="cancelEditWork()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <h3 style="margin-bottom:0;">工時紀錄清單</h3>
+          <select id="wFilterEmployee" onchange="renderWork()">
+            <option value="all">全部員工</option>
+          </select>
+          <input type="month" id="wFilterMonth" onchange="renderWork()">
+          <select id="wFilterType" onchange="renderWork()">
+            <option value="all">全部類型</option>
+            <option value="work">上班</option>
+            <option value="leave">休假</option>
+          </select>
+          <input type="text" id="wSearch" placeholder="搜尋備註…" oninput="renderWork()">
+        </div>
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>員工</th><th>日期</th><th>類型</th><th>上班</th><th>下班</th><th>時數</th><th>時薪</th><th>薪水</th><th>備註</th><th></th></tr></thead>
+          <tbody id="workTableBody"></tbody>
+        </table>
+        </div>
+        <div class="empty-state" id="workEmpty" style="display:none;">
+          <div class="big">🗓️</div>目前還沒有工時紀錄，加入第一筆看看吧
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 待辦事項 ============ -->
+    <section class="page" id="page-todo">
+      <h1 class="pagetitle">待辦事項</h1>
+      <p class="pagesub">工地待辦、材料採購、聯絡事項都放這裡</p>
+
+      <div class="section-box">
+        <h3 id="tFormTitle">新增待辦</h3>
+        <div class="form-row">
+          <div style="grid-column:1/-1;"><label>待辦內容</label><input type="text" id="tContent" placeholder="例如：訂購水泥、聯絡水電師傅"></div>
+        </div>
+        <div class="form-row">
+          <div><label>截止日期（選填）</label><input type="date" id="tDue"></div>
+          <div><label>時間（選填）</label><input type="time" id="tDueTime"></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="tSubmitBtn" onclick="addTodo()">＋ 新增待辦</button>
+          <button class="btn btn-outline" id="tCancelBtn" style="display:none;" onclick="cancelEditTodo()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <h3 style="margin-bottom:0;">清單</h3>
+          <select id="tFilter" onchange="renderTodo()">
+            <option value="all">全部</option>
+            <option value="pending">未完成</option>
+            <option value="done">已完成</option>
+          </select>
+        </div>
+        <div id="todoList"></div>
+        <div class="empty-state" id="todoEmpty" style="display:none;">
+          <div class="big">✅</div>目前沒有待辦事項
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 收支記錄 ============ -->
+    <section class="page" id="page-money">
+      <h1 class="pagetitle">收支記錄</h1>
+      <p class="pagesub">每天的進帳、出帳，以及應收／應付帳款</p>
+
+      <div class="section-box">
+        <h3 id="mFormTitle">新增一筆記錄</h3>
+        <div class="form-row">
+          <div><label>日期</label><input type="date" id="mDate"></div>
+          <div>
+            <label>類型</label>
+            <select id="mType" onchange="toggleMoneyUnpaidLabel()">
+              <option value="in">進帳（收入）</option>
+              <option value="out">出帳（支出）</option>
+            </select>
+          </div>
+          <div><label>金額</label><input type="number" id="mAmount" placeholder="例如 15000"></div>
+        </div>
+        <div class="form-row">
+          <div style="grid-column:1/-1;"><label>項目說明</label><input type="text" id="mNote" placeholder="例如：某某案場工程款、材料費"></div>
+        </div>
+        <div class="checkbox-row" style="margin-bottom:14px;">
+          <input type="checkbox" id="mUnpaid"><label style="margin:0;" for="mUnpaid" id="mUnpaidLabel">這筆是「應收帳款」（客戶還沒付款）</label>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="mSubmitBtn" onclick="addMoney()">＋ 新增記錄</button>
+          <button class="btn btn-outline" id="mCancelBtn" style="display:none;" onclick="cancelEditMoney()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <h3 style="margin-bottom:0;">收支清單</h3>
+          <input type="month" id="mFilterMonth" onchange="renderMoney()">
+          <select id="mFilterType" onchange="renderMoney()">
+            <option value="all">全部類型</option>
+            <option value="in">進帳</option>
+            <option value="out">出帳</option>
+            <option value="receivable">應收帳款</option>
+            <option value="payable">應付帳款</option>
+          </select>
+          <input type="text" id="mSearch" placeholder="搜尋項目…" oninput="renderMoney()">
+        </div>
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>日期</th><th>類型</th><th>項目</th><th>金額</th><th>狀態</th><th></th></tr></thead>
+          <tbody id="moneyTableBody"></tbody>
+        </table>
+        </div>
+        <div class="empty-state" id="moneyEmpty" style="display:none;">
+          <div class="big">💸</div>目前還沒有收支紀錄
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 收款管理 ============ -->
+    
+
+    
+
+    
+
+    <!-- ============ 每月總帳 ============ -->
+    <section class="page" id="page-summary">
+      <h1 class="pagetitle">每月總帳</h1>
+      <p class="pagesub">選擇月份，看整體的薪水、收支與未收款總覽</p>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <input type="month" id="sMonth" onchange="renderSummary()">
+        </div>
+      </div>
+
+      <div class="grid-cards" id="summaryCards"></div>
+
+      <div class="section-box">
+        <h3>應收／應付帳款明細（該月）</h3>
+        <div id="summaryUnpaidList"></div>
+      </div>
+    </section>
+
+    <!-- ============ 客戶預約 ============ -->
+    <section class="page" id="page-appt">
+      <h1 class="pagetitle">客戶預約</h1>
+      <p class="pagesub">記錄客戶預約資訊</p>
+
+      <div class="note-card">
+        ⚠️ <b>提醒：</b>這裡會存客戶姓名、電話、住址，屬於個人資料。<br>
+        測試與展示時請一律使用假資料（例如：王小明 / 0912-345-678），不要輸入真實客戶資料。<br>
+        建議在正式使用前，於預約表單旁加上一句告知：「我們僅收集姓名/電話用於預約聯繫，保存 6 個月，可隨時要求刪除」。
+      </div>
+
+      <div class="section-box">
+        <h3 id="aFormTitle">新增預約</h3>
+        <div class="form-row">
+          <div><label>客戶姓名</label><input type="text" id="aName" placeholder="王小明"></div>
+          <div><label>電話</label><input type="text" id="aPhone" placeholder="0912-345-678"></div>
+        </div>
+        <div class="form-row">
+          <div style="grid-column:1/-1;"><label>住址（選填）</label><input type="text" id="aAddress" placeholder="施工地址／到府服務地址"></div>
+        </div>
+        <div class="form-row">
+          <div><label>預約日期</label><input type="date" id="aDate"></div>
+          <div><label>預約時間</label><input type="time" id="aTime"></div>
+          <div><label>服務項目</label><input type="text" id="aService" placeholder="例如：估價、施工、維修"></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="aSubmitBtn" onclick="addAppt()">＋ 新增預約</button>
+          <button class="btn btn-outline" id="aCancelBtn" style="display:none;" onclick="cancelEditAppt()">取消編輯</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <div class="toolbar">
+          <h3 style="margin-bottom:0;">預約清單</h3>
+          <input type="text" id="aSearch" placeholder="搜尋姓名/電話…" oninput="renderAppt()">
+        </div>
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>日期時間</th><th>客戶</th><th>電話</th><th>服務項目</th><th></th></tr></thead>
+          <tbody id="apptTableBody"></tbody>
+        </table>
+        </div>
+        <div class="empty-state" id="apptEmpty" style="display:none;">
+          <div class="big">📅</div>目前還沒有預約紀錄
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 備份與設定 ============ -->
+    <section class="page" id="page-backup">
+      <h1 class="pagetitle">備份與設定</h1>
+      <p class="pagesub">資料儲存說明與匯出／匯入備份</p>
+
+      <div class="section-box">
+        <h3>資料儲存方式</h3>
+        <div class="honesty">
+          📍 本機儲存 · 僅在此裝置、此瀏覽器有效 · 換裝置或清除瀏覽器資料會遺失 · 建議定期匯出備份
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3>匯出備份</h3>
+        <p style="font-size:.85rem; color:var(--medium); margin-bottom:14px;">將所有資料下載成一個備份檔，建議存到雲端硬碟或寄一份到自己信箱。</p>
+        <button class="btn btn-secondary" onclick="exportBackup()">⬇️ 匯出備份檔</button>
+      </div>
+
+      <div class="section-box">
+        <h3>匯入備份</h3>
+        <p style="font-size:.85rem; color:var(--medium); margin-bottom:14px;">選擇先前匯出的備份檔，還原所有資料（會覆蓋目前的資料，請先確認）。</p>
+        <div class="backup-box">
+          <input type="file" id="importFile" accept=".json" style="max-width:280px;">
+          <button class="btn btn-outline" onclick="importBackup()">⬆️ 匯入備份檔</button>
+        </div>
+      </div>
+
+      <div class="section-box">
+        <h3>清空所有資料</h3>
+        <p style="font-size:.85rem; color:var(--medium); margin-bottom:14px;">會刪除這個瀏覽器裡的所有資料，請先確認已經匯出備份。</p>
+        <button class="btn btn-danger" onclick="clearAll()">🗑️ 清空所有資料</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- 側邊抽屜選單 -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sh-title">統包管理小工具</div>
+    <div class="sh-sub">本機儲存 · 個人版</div>
+  </div>
+  <div class="sidebar-nav">
+    <button class="sidebar-item active" data-page="dashboard"><span class="si-ic">📊</span>儀表板</button>
+    <button class="sidebar-item" data-page="case"><span class="si-ic">🏗️</span>案件管理</button>
+    <button class="sidebar-item" data-page="quote"><span class="si-ic">📝</span>報價管理</button>
+    <button class="sidebar-item" data-page="progress"><span class="si-ic">📅</span>工程進度</button>
+    <button class="sidebar-item" data-page="material"><span class="si-ic">📦</span>材料採購</button>
+    <button class="sidebar-item" data-page="team"><span class="si-ic">👷</span>工班管理</button>
+    <button class="sidebar-item" data-page="work"><span class="si-ic">⏱️</span>工時與薪水</button>
+    <button class="sidebar-item" data-page="todo"><span class="si-ic">📋</span>待辦事項</button>
+    <button class="sidebar-item" data-page="money"><span class="si-ic">💰</span>收支記錄</button>
+    <button class="sidebar-item" data-page="summary"><span class="si-ic">📈</span>每月總帳</button>
+    <button class="sidebar-item" data-page="appt"><span class="si-ic">📅</span>客戶預約</button>
+    <button class="sidebar-item" data-page="backup"><span class="si-ic">💾</span>備份與設定</button>
+  </div>
+</nav>
+
+<!-- 自訂確認/提示視窗，取代原生 confirm()/alert() -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <p id="confirmMessage"></p>
+    <div class="row-actions">
+      <button class="btn btn-outline" id="confirmNoBtn">取消</button>
+      <button class="btn btn-danger" id="confirmYesBtn">確定</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="alertModal">
+  <div class="modal-box">
+    <p id="alertMessage"></p>
+    <div class="row-actions">
+      <button class="btn btn-primary" id="alertOkBtn">好的</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- 自訂確認/提示視窗（取代原生 confirm/alert，避免被預覽環境擋掉） ---------------- */
+function customConfirm(message){
+  return new Promise((resolve)=>{
+    const overlay = document.getElementById('confirmModal');
+    const finalMessage = (message.includes('刪除') && !message.includes('無法復原'))
+      ? message + '\n\n此動作無法復原，刪除後只能靠備份檔案救回。'
+      : message;
+    document.getElementById('confirmMessage').textContent = finalMessage;
+    overlay.classList.add('show');
+    const yesBtn = document.getElementById('confirmYesBtn');
+    const noBtn = document.getElementById('confirmNoBtn');
+    function cleanup(result){
+      overlay.classList.remove('show');
+      yesBtn.removeEventListener('click', onYes);
+      noBtn.removeEventListener('click', onNo);
+      resolve(result);
+    }
+    function onYes(){ cleanup(true); }
+    function onNo(){ cleanup(false); }
+    yesBtn.addEventListener('click', onYes);
+    noBtn.addEventListener('click', onNo);
+  });
+}
+function customAlert(message){
+  return new Promise((resolve)=>{
+    const overlay = document.getElementById('alertModal');
+    document.getElementById('alertMessage').textContent = message;
+    overlay.classList.add('show');
+    const okBtn = document.getElementById('alertOkBtn');
+    function onOk(){
+      overlay.classList.remove('show');
+      okBtn.removeEventListener('click', onOk);
+      resolve(true);
+    }
+    okBtn.addEventListener('click', onOk);
+  });
+}
+
+/* ---------------- 資料存取 ---------------- */
+const KEYS = { work:'gt_work', todo:'gt_todo', money:'gt_money', appt:'gt_appt', employees:'gt_employees', cases:'gt_cases',
+  quotes:'gt_quotes', progress:'gt_progress', materials:'gt_materials', teams:'gt_teams', teamPayments:'gt_team_payments',
+  payments:'gt_payments', changeOrders:'gt_change_orders', caseLogs:'gt_case_logs', warranties:'gt_warranties',
+  warrantyClaims:'gt_warranty_claims', waste:'gt_waste', contracts:'gt_contracts' };
+function load(key){ try{ return JSON.parse(localStorage.getItem(key)) || []; }catch(e){ return []; } }
+function save(key, data){ localStorage.setItem(key, JSON.stringify(data)); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function fmtMoney(n){ return 'NT$ ' + Number(n||0).toLocaleString(); }
+function todayMonth(){ const d=new Date(); return d.toISOString().slice(0,7); }
+
+let work = load(KEYS.work);
+let todo = load(KEYS.todo);
+let money = load(KEYS.money);
+let appt = load(KEYS.appt);
+let employees = load(KEYS.employees);
+let cases = load(KEYS.cases);
+let quotes = load(KEYS.quotes);
+let progressSteps = load(KEYS.progress);
+let materials = load(KEYS.materials);
+let teams = load(KEYS.teams);
+let teamPayments = load(KEYS.teamPayments);
+let payments = load(KEYS.payments);
+let changeOrders = load(KEYS.changeOrders);
+let caseLogs = load(KEYS.caseLogs);
+let warranties = load(KEYS.warranties);
+let warrantyClaims = load(KEYS.warrantyClaims);
+let waste = load(KEYS.waste);
+let contracts = load(KEYS.contracts);
+let currentDetailCaseId = null;
+
+function caseLabel(id){
+  const c = cases.find(x=>x.id===id);
+  return c? `${c.customer}｜${c.name}` : '（已刪除的案件）';
+}
+function refreshCaseSelectors(){
+  const opts = cases.map(c=>`<option value="${c.id}">${c.customer}｜${c.name}</option>`).join('');
+  const filterSelects = ['qFilterCase','pgFilterCase','matFilterCase'];
+  filterSelects.forEach(id=>{
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = `<option value="all">全部案件</option>` + opts;
+    sel.value = cases.some(c=>c.id===cur) ? cur : 'all';
+  });
+  const formSelects = ['qCase','pgCase','matCase'];
+  formSelects.forEach(id=>{
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = opts;
+    if(cases.some(c=>c.id===cur)) sel.value = cur;
+  });
+  const tmCaseSel = document.getElementById('tmCase');
+  if(tmCaseSel){
+    const cur = tmCaseSel.value;
+    tmCaseSel.innerHTML = `<option value="">未指定</option>` + opts;
+    tmCaseSel.value = cases.some(c=>c.id===cur) ? cur : '';
+  }
+}
+
+/* ---------------- 案件詳情頁 ---------------- */
+function openCaseDetail(id){
+  currentDetailCaseId = id;
+  ['clCase','wrCase','wcCase','wsCase','coCase','payCase'].forEach(fid=>{
+    const el = document.getElementById(fid);
+    if(el) el.value = id;
+  });
+  renderCaseDetailOverview();
+  renderCaseLogs();
+  renderWarranties();
+  renderWarrantyClaims();
+  renderWaste();
+  renderChangeOrders();
+  renderPayments();
+  renderContracts();
+  switchDetailTab('overview');
+  showPage('casedetail');
+}
+function switchDetailTab(tab){
+  document.querySelectorAll('.cd-tabpanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('cdPanel-'+tab).classList.add('active');
+  document.querySelectorAll('.cd-tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+}
+function renderCaseDetailOverview(){
+  const c = cases.find(x=>x.id===currentDetailCaseId);
+  const box = document.getElementById('cdOverview');
+  if(!c){ box.innerHTML = ''; return; }
+  const cost = computeCaseCost(c.id);
+  const profit = c.contract - cost;
+  const profitClass = profit>=0 ? 'positive' : 'negative';
+
+  let warningHtml = '';
+  if(c.status==='progress' && c.progress>0 && c.contract>0){
+    const projectedTotalCost = cost / (c.progress/100);
+    const projectedProfit = c.contract - projectedTotalCost;
+    const marginRate = projectedProfit / c.contract;
+    let tag;
+    if(marginRate < 0) tag = `<span class="tag unpaid">🔴 預估虧損</span>`;
+    else if(marginRate < 0.1) tag = `<span class="tag unpaid">🔴 利潤偏低</span>`;
+    else if(marginRate < 0.25) tag = `<span class="tag pending">🟡 利潤下降中</span>`;
+    else tag = `<span class="tag done">🟢 利潤正常</span>`;
+    warningHtml = `<div style="margin-top:10px; font-size:.85rem; color:var(--medium);">依目前進度反推：完工後預估總成本 ${fmtMoney(projectedTotalCost)}，預估利潤 ${fmtMoney(projectedProfit)} ${tag}</div>`;
+  }
+
+  box.innerHTML = `
+    <div class="cd-overview-hero">
+      <div class="hero-label">🏠 ${c.customer}｜${c.name}　·　${statusLabel[c.status]}${c.dueDate? '　·　預計完工 '+c.dueDate:''}</div>
+      <div class="hero-label" style="margin-top:10px;">這個案子目前賺多少？</div>
+      <div class="hero-value ${profitClass}">${fmtMoney(profit)}</div>
+      ${warningHtml}
+    </div>
+    <div class="grid-cards" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="label">工程總價</div><div class="value">${fmtMoney(c.contract)}</div></div>
+      <div class="stat-card blue"><div class="label">已收</div><div class="value blue">${fmtMoney(c.received)}</div></div>
+      <div class="stat-card"><div class="label">成本（自動加總）</div><div class="value pink">${fmtMoney(cost)}</div></div>
+      <div class="stat-card sage"><div class="label">施工進度</div><div class="value sage">${c.progress}%</div></div>
+    </div>
+    <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${c.progress}%;"></div></div>
+    ${c.address? `<div style="font-size:.85rem; color:var(--gray); margin:10px 0;">📍 ${c.address}</div>`:''}
+    ${c.phone? `<div style="font-size:.85rem; color:var(--gray); margin-bottom:10px;">📞 ${c.phone}</div>`:''}
+    <button class="btn btn-secondary btn-sm" onclick="editCase('${c.id}'); showPage('case');">編輯案件基本資料</button>
+  `;
+}
+
+/* ---------------- 導覽 ---------------- */
+const pages = ['dashboard','case','casedetail','quote','progress','material','team','work','todo','money','summary','appt','backup'];
+function showPage(name){
+  pages.forEach(p=>{
+    document.getElementById('page-'+p).classList.toggle('active', p===name);
+  });
+  document.querySelectorAll('.sidebar-item[data-page]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.page===name);
+  });
+  closeSidebar();
+  window.scrollTo(0,0);
+  if(name==='dashboard') renderDashboard();
+  if(name==='case') renderCases();
+  if(name==='quote') renderQuotes();
+  if(name==='progress') renderProgress();
+  if(name==='material') renderMaterials();
+  if(name==='team') renderTeamPayments();
+  if(name==='work') { renderWork(); renderClockStatus(); }
+  if(name==='todo') renderTodo();
+  if(name==='money') renderMoney();
+  if(name==='summary') renderSummary();
+  if(name==='appt') renderAppt();
+}
+document.querySelectorAll('.sidebar-item[data-page]').forEach(b=>{
+  b.addEventListener('click', ()=>showPage(b.dataset.page));
+});
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('show');
+  document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('show');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+/* ---------------- 案件管理 ---------------- */
+let editingCaseId = null;
+const statusLabel = { quote:'報價中', progress:'施工中', done:'已完工' };
+async function addCase(){
+  const customer = document.getElementById('cCustomer').value.trim();
+  const name = document.getElementById('cName').value.trim();
+  const phone = document.getElementById('cPhone').value.trim();
+  const address = document.getElementById('cAddress').value.trim();
+  const status = document.getElementById('cStatus').value;
+  const dueDate = document.getElementById('cDueDate').value;
+  const progress = Math.max(0, Math.min(100, parseFloat(document.getElementById('cProgress').value)||0));
+  const contract = parseFloat(document.getElementById('cContract').value)||0;
+  const received = parseFloat(document.getElementById('cReceived').value)||0;
+  const otherCost = parseFloat(document.getElementById('cOtherCost').value)||0;
+  const note = document.getElementById('cNote').value.trim();
+  if(!customer || !name){ await customAlert('請至少填寫客戶姓名與案件名稱'); return; }
+
+  const rec = { customer, name, phone, address, status, dueDate, progress, contract, received, otherCost, note };
+  if(editingCaseId){
+    cases = cases.map(c=> c.id===editingCaseId? {...c, ...rec} : c);
+    cancelEditCase();
+  } else {
+    cases.push({id:uid(), ...rec});
+  }
+  save(KEYS.cases, cases);
+  ['cCustomer','cPhone','cName','cAddress','cDueDate','cProgress','cContract','cReceived','cOtherCost','cNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cStatus').value='quote';
+  renderCases();
+}
+function editCase(id){
+  const c = cases.find(x=>x.id===id);
+  if(!c) return;
+  editingCaseId = id;
+  document.getElementById('cCustomer').value=c.customer;
+  document.getElementById('cPhone').value=c.phone||'';
+  document.getElementById('cName').value=c.name;
+  document.getElementById('cAddress').value=c.address||'';
+  document.getElementById('cStatus').value=c.status;
+  document.getElementById('cDueDate').value=c.dueDate||'';
+  document.getElementById('cProgress').value=c.progress;
+  document.getElementById('cContract').value=c.contract;
+  document.getElementById('cReceived').value=c.received;
+  document.getElementById('cOtherCost').value=c.otherCost||0;
+  document.getElementById('cNote').value=c.note||'';
+  document.getElementById('cFormTitle').textContent='編輯案件';
+  document.getElementById('cSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('cCancelBtn').style.display='inline-flex';
+  document.getElementById('cCustomer').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function cancelEditCase(){
+  editingCaseId = null;
+  ['cCustomer','cPhone','cName','cAddress','cDueDate','cProgress','cContract','cReceived','cOtherCost','cNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cStatus').value='quote';
+  document.getElementById('cFormTitle').textContent='新增案件';
+  document.getElementById('cSubmitBtn').textContent='＋ 新增案件';
+  document.getElementById('cCancelBtn').style.display='none';
+}
+async function deleteCase(id){
+  const ok = await customConfirm('確定要刪除這個案件嗎？');
+  if(!ok) return;
+  cases = cases.filter(c=>c.id!==id);
+  save(KEYS.cases, cases);
+  if(editingCaseId===id) cancelEditCase();
+  renderCases();
+}
+function computeCaseCost(caseId){
+  const matSum = materials.filter(m=>m.caseId===caseId).reduce((s,m)=>s+m.qty*m.price,0);
+  const teamSum = teamPayments.filter(p=>p.caseId===caseId).reduce((s,p)=>s+p.amount,0);
+  const wasteSum = waste.filter(w=>w.caseId===caseId).reduce((s,w)=>s+w.fee,0);
+  const c = cases.find(x=>x.id===caseId);
+  const other = c? (c.otherCost||0) : 0;
+  return matSum + teamSum + wasteSum + other;
+}
+function renderCases(){
+  refreshCaseSelectors();
+  const filterStatus = document.getElementById('cFilterStatus').value;
+  const search = (document.getElementById('cSearch').value||'').toLowerCase();
+  let rows = cases.filter(c=>{
+    const okStatus = filterStatus==='all' || c.status===filterStatus;
+    const okSearch = !search || c.customer.toLowerCase().includes(search) || c.name.toLowerCase().includes(search);
+    return okStatus && okSearch;
+  }).sort((a,b)=> (a.status==='done')-(b.status==='done'));
+  const grid = document.getElementById('caseGrid');
+  grid.innerHTML = rows.map(c=>{
+    const cost = computeCaseCost(c.id);
+    const profit = c.contract - cost;
+    const statusClass = c.status==='quote'?'status-quote': c.status==='done'?'status-done':'status-progress';
+
+    // 案件獲利預警：依施工進度反推完工後預估成本與利潤
+    let warningHtml = '';
+    if(c.status==='progress' && c.progress>0 && c.contract>0){
+      const projectedTotalCost = cost / (c.progress/100);
+      const projectedProfit = c.contract - projectedTotalCost;
+      const marginRate = projectedProfit / c.contract;
+      let tag;
+      if(marginRate < 0) tag = `<span class="tag unpaid">🔴 預估虧損</span>`;
+      else if(marginRate < 0.1) tag = `<span class="tag unpaid">🔴 利潤偏低</span>`;
+      else if(marginRate < 0.25) tag = `<span class="tag pending">🟡 利潤下降中</span>`;
+      else tag = `<span class="tag done">🟢 利潤正常</span>`;
+      warningHtml = `
+      <div style="background:var(--light-blue); border-radius:8px; padding:10px 12px; margin:10px 0; font-size:.78rem; color:var(--medium);">
+        依目前進度反推：完工後預估總成本 ${fmtMoney(projectedTotalCost)}，預估利潤 ${fmtMoney(projectedProfit)} ${tag}
+      </div>`;
+    }
+
+    return `
+    <div class="case-card ${statusClass}">
+      <div class="case-title">🏠 ${c.customer}｜${c.name}</div>
+      <div class="case-sub">
+        <span class="tag ${c.status==='quote'?'pending':c.status==='done'?'done':'unpaid'}">${statusLabel[c.status]}</span>
+        ${c.dueDate? ` · 預計完工 ${c.dueDate}`:''}
+      </div>
+      <div class="case-row"><span>工程金額</span><b>${fmtMoney(c.contract)}</b></div>
+      <div class="case-row"><span>已收</span><b>${fmtMoney(c.received)}</b></div>
+      <div class="case-row"><span>成本（自動加總）</span><b>${fmtMoney(cost)}</b></div>
+      <div class="case-row profit"><span>目前利潤</span><b>${fmtMoney(profit)}</b></div>
+      <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${c.progress}%;"></div></div>
+      <div class="progress-label">施工進度 ${c.progress}%</div>
+      ${warningHtml}
+      ${c.address? `<div style="font-size:.78rem; color:var(--gray); margin-bottom:10px;">📍 ${c.address}</div>`:''}
+      <div class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="openCaseDetail('${c.id}')">📂 查看詳情</button>
+        <button class="btn btn-secondary btn-sm" onclick="editCase('${c.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCase('${c.id}')">刪除</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('caseEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 報價管理 ---------------- */
+let editingQuoteId = null;
+let quoteItemsDraft = [];
+function addQuoteItemRow(){
+  quoteItemsDraft.push({id:uid(), name:'', amount:0});
+  renderQuoteItemRows();
+}
+function removeQuoteItemRow(rowId){
+  quoteItemsDraft = quoteItemsDraft.filter(r=>r.id!==rowId);
+  renderQuoteItemRows();
+}
+function updateQuoteItemDraft(rowId, field, value){
+  quoteItemsDraft = quoteItemsDraft.map(r=> r.id===rowId? {...r, [field]: field==='amount'? (parseFloat(value)||0) : value} : r);
+  updateQuoteTotalDisplay();
+}
+function renderQuoteItemRows(){
+  const container = document.getElementById('qItemsContainer');
+  container.innerHTML = quoteItemsDraft.map(r=>`
+    <div class="form-row" style="grid-template-columns:2fr 1fr auto; align-items:end; margin-bottom:8px;">
+      <div><label>項目名稱</label><input type="text" value="${r.name}" oninput="updateQuoteItemDraft('${r.id}','name',this.value)" placeholder="例如：拆除"></div>
+      <div><label>金額</label><input type="number" value="${r.amount||''}" oninput="updateQuoteItemDraft('${r.id}','amount',this.value)" placeholder="例如 10000"></div>
+      <button class="btn btn-danger btn-sm" onclick="removeQuoteItemRow('${r.id}')">刪除</button>
+    </div>
+  `).join('') || `<div style="color:var(--gray); font-size:.85rem;">尚未新增項目，請點下方「新增項目」</div>`;
+  updateQuoteTotalDisplay();
+}
+function updateQuoteTotalDisplay(){
+  const total = quoteItemsDraft.reduce((s,r)=>s+(r.amount||0),0);
+  document.getElementById('qTotalDisplay').textContent = fmtMoney(total);
+}
+async function addQuote(){
+  const caseId = document.getElementById('qCase').value;
+  const date = document.getElementById('qDate').value;
+  if(!caseId){ await customAlert('請選擇所屬案件'); return; }
+  if(quoteItemsDraft.length===0){ await customAlert('請至少新增一個報價項目'); return; }
+  const items = quoteItemsDraft.map(r=>({name:r.name||'未命名項目', amount:r.amount||0}));
+  const total = items.reduce((s,i)=>s+i.amount,0);
+  if(editingQuoteId){
+    quotes = quotes.map(q=> q.id===editingQuoteId? {...q, caseId, date, items, total} : q);
+    cancelEditQuote();
+  } else {
+    quotes.push({id:uid(), caseId, date, items, total});
+  }
+  save(KEYS.quotes, quotes);
+  document.getElementById('qDate').value='';
+  quoteItemsDraft = [];
+  renderQuoteItemRows();
+  renderQuotes();
+}
+function editQuote(id){
+  const q = quotes.find(x=>x.id===id);
+  if(!q) return;
+  editingQuoteId = id;
+  document.getElementById('qCase').value = q.caseId;
+  document.getElementById('qDate').value = q.date||'';
+  quoteItemsDraft = q.items.map(i=>({id:uid(), name:i.name, amount:i.amount}));
+  renderQuoteItemRows();
+  document.getElementById('qSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('qCancelBtn').style.display='inline-flex';
+  showPage('quote');
+}
+function cancelEditQuote(){
+  editingQuoteId = null;
+  document.getElementById('qDate').value='';
+  quoteItemsDraft = [];
+  renderQuoteItemRows();
+  document.getElementById('qSubmitBtn').textContent='＋ 儲存報價單';
+  document.getElementById('qCancelBtn').style.display='none';
+}
+async function deleteQuote(id){
+  const ok = await customConfirm('確定要刪除這份報價單嗎？');
+  if(!ok) return;
+  quotes = quotes.filter(q=>q.id!==id);
+  save(KEYS.quotes, quotes);
+  if(editingQuoteId===id) cancelEditQuote();
+  renderQuotes();
+}
+function printQuote(id){
+  const q = quotes.find(x=>x.id===id);
+  if(!q) return;
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html><head><title>報價單</title>
+    <style>body{font-family:'Noto Sans TC',sans-serif; padding:40px; color:#37352F;}
+    h1{color:#C9938A;} table{width:100%; border-collapse:collapse; margin-top:20px;}
+    th,td{padding:10px; border-bottom:1px solid #eee; text-align:left;}
+    .total{text-align:right; font-size:1.3rem; font-weight:900; margin-top:20px;}</style>
+    </head><body>
+    <h1>報價單</h1>
+    <p>案件：${caseLabel(q.caseId)}</p>
+    <p>日期：${q.date||'—'}</p>
+    <table><thead><tr><th>項目</th><th>金額</th></tr></thead><tbody>
+    ${q.items.map(i=>`<tr><td>${i.name}</td><td>${fmtMoney(i.amount)}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="total">工程總價：${fmtMoney(q.total)}</div>
+    </body></html>
+  `);
+  win.document.close();
+  win.print();
+}
+function renderQuotes(){
+  refreshCaseSelectors();
+  const filterCase = document.getElementById('qFilterCase').value;
+  let rows = quotes.filter(q=> filterCase==='all' || q.caseId===filterCase)
+                    .sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  const list = document.getElementById('quoteList');
+  list.innerHTML = rows.map(q=>`
+    <div class="section-box" style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div><b>${caseLabel(q.caseId)}</b><span style="color:var(--gray); font-size:.8rem; margin-left:8px;">${q.date||''}</span></div>
+        <div style="font-weight:900; color:var(--pink);">${fmtMoney(q.total)}</div>
+      </div>
+      <div style="font-size:.85rem; color:var(--medium); margin-bottom:10px;">
+        ${q.items.map(i=>`${i.name}　${fmtMoney(i.amount)}`).join('　·　')}
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-secondary btn-sm" onclick="printQuote('${q.id}')">📄 匯出/列印</button>
+        <button class="btn btn-secondary btn-sm" onclick="editQuote('${q.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteQuote('${q.id}')">刪除</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('quoteEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 工程進度 ---------------- */
+let editingProgressId = null;
+const progressStatusLabel = { pending:'⏳ 待處理', doing:'🔄 進行中', done:'✅ 已完成' };
+async function addProgress(){
+  const caseId = document.getElementById('pgCase').value;
+  const name = document.getElementById('pgName').value.trim();
+  const status = document.getElementById('pgStatus').value;
+  if(!caseId){ await customAlert('請選擇所屬案件'); return; }
+  if(!name){ await customAlert('請輸入階段名稱'); return; }
+  if(editingProgressId){
+    progressSteps = progressSteps.map(p=> p.id===editingProgressId? {...p, caseId, name, status} : p);
+    cancelEditProgress();
+  } else {
+    progressSteps.push({id:uid(), caseId, name, status});
+  }
+  save(KEYS.progress, progressSteps);
+  document.getElementById('pgName').value='';
+  document.getElementById('pgStatus').value='pending';
+  renderProgress();
+}
+function editProgress(id){
+  const p = progressSteps.find(x=>x.id===id);
+  if(!p) return;
+  editingProgressId = id;
+  document.getElementById('pgCase').value = p.caseId;
+  document.getElementById('pgName').value = p.name;
+  document.getElementById('pgStatus').value = p.status;
+  document.getElementById('pgFormTitle').textContent='編輯進度項目';
+  document.getElementById('pgSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('pgCancelBtn').style.display='inline-flex';
+}
+function cancelEditProgress(){
+  editingProgressId = null;
+  document.getElementById('pgName').value='';
+  document.getElementById('pgStatus').value='pending';
+  document.getElementById('pgFormTitle').textContent='新增進度項目';
+  document.getElementById('pgSubmitBtn').textContent='＋ 新增階段';
+  document.getElementById('pgCancelBtn').style.display='none';
+}
+function cycleProgressStatus(id){
+  const order = ['pending','doing','done'];
+  progressSteps = progressSteps.map(p=>{
+    if(p.id!==id) return p;
+    const next = order[(order.indexOf(p.status)+1) % order.length];
+    return {...p, status:next};
+  });
+  save(KEYS.progress, progressSteps);
+  renderProgress();
+}
+async function deleteProgress(id){
+  const ok = await customConfirm('確定要刪除這個進度項目嗎？');
+  if(!ok) return;
+  progressSteps = progressSteps.filter(p=>p.id!==id);
+  save(KEYS.progress, progressSteps);
+  if(editingProgressId===id) cancelEditProgress();
+  renderProgress();
+}
+function renderProgress(){
+  refreshCaseSelectors();
+  const filterCase = document.getElementById('pgFilterCase').value;
+  let rows = progressSteps.filter(p=> filterCase==='all' || p.caseId===filterCase);
+  const list = document.getElementById('progressList');
+  list.innerHTML = rows.map(p=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--light-pink);">
+      <div>
+        <div>${p.name}</div>
+        <div style="font-size:.75rem; color:var(--gray); margin-top:2px;">${caseLabel(p.caseId)}</div>
+      </div>
+      <div class="row-actions">
+        <span class="tag ${p.status==='done'?'done':p.status==='doing'?'unpaid':'pending'}" style="cursor:pointer;" onclick="cycleProgressStatus('${p.id}')">${progressStatusLabel[p.status]}</span>
+        <button class="btn btn-secondary btn-sm" onclick="editProgress('${p.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProgress('${p.id}')">刪除</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('progressEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 材料採購 ---------------- */
+let editingMaterialId = null;
+async function addMaterial(){
+  const caseId = document.getElementById('matCase').value;
+  const name = document.getElementById('matName').value.trim();
+  const supplier = document.getElementById('matSupplier').value.trim();
+  const qty = parseFloat(document.getElementById('matQty').value)||0;
+  const price = parseFloat(document.getElementById('matPrice').value)||0;
+  const paid = document.getElementById('matPaid').checked;
+  const delivered = document.getElementById('matDelivered').checked;
+  if(!caseId){ await customAlert('請選擇所屬案件'); return; }
+  if(!name || !qty || !price){ await customAlert('請填寫材料名稱、數量與單價'); return; }
+  const rec = {caseId, name, supplier, qty, price, paid, delivered};
+  if(editingMaterialId){
+    materials = materials.map(m=> m.id===editingMaterialId? {...m, ...rec} : m);
+    cancelEditMaterial();
+  } else {
+    materials.push({id:uid(), ...rec});
+  }
+  save(KEYS.materials, materials);
+  ['matName','matSupplier','matQty','matPrice'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('matPaid').checked=false;
+  document.getElementById('matDelivered').checked=false;
+  renderMaterials();
+}
+function editMaterial(id){
+  const m = materials.find(x=>x.id===id);
+  if(!m) return;
+  editingMaterialId = id;
+  document.getElementById('matCase').value = m.caseId;
+  document.getElementById('matName').value = m.name;
+  document.getElementById('matSupplier').value = m.supplier||'';
+  document.getElementById('matQty').value = m.qty;
+  document.getElementById('matPrice').value = m.price;
+  document.getElementById('matPaid').checked = !!m.paid;
+  document.getElementById('matDelivered').checked = !!m.delivered;
+  document.getElementById('matFormTitle').textContent='編輯材料';
+  document.getElementById('matSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('matCancelBtn').style.display='inline-flex';
+}
+function cancelEditMaterial(){
+  editingMaterialId = null;
+  ['matName','matSupplier','matQty','matPrice'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('matPaid').checked=false;
+  document.getElementById('matDelivered').checked=false;
+  document.getElementById('matFormTitle').textContent='新增材料';
+  document.getElementById('matSubmitBtn').textContent='＋ 新增材料';
+  document.getElementById('matCancelBtn').style.display='none';
+}
+async function deleteMaterial(id){
+  const ok = await customConfirm('確定要刪除這筆材料紀錄嗎？');
+  if(!ok) return;
+  materials = materials.filter(m=>m.id!==id);
+  save(KEYS.materials, materials);
+  if(editingMaterialId===id) cancelEditMaterial();
+  renderMaterials();
+}
+function renderMaterials(){
+  refreshCaseSelectors();
+  const filterCase = document.getElementById('matFilterCase').value;
+  let rows = materials.filter(m=> filterCase==='all' || m.caseId===filterCase);
+  const body = document.getElementById('materialTableBody');
+  body.innerHTML = rows.map(m=>{
+    const subtotal = m.qty*m.price;
+    return `
+    <tr>
+      <td>${caseLabel(m.caseId)}</td>
+      <td>${m.name}</td>
+      <td>${m.supplier||'—'}</td>
+      <td>${m.qty}</td>
+      <td>${fmtMoney(m.price)}</td>
+      <td><b>${fmtMoney(subtotal)}</b></td>
+      <td>
+        <span class="tag ${m.paid?'done':'unpaid'}">${m.paid?'已付款':'未付款'}</span>
+        <span class="tag ${m.delivered?'done':'pending'}">${m.delivered?'已到貨':'未到貨'}</span>
+      </td>
+      <td class="row-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editMaterial('${m.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMaterial('${m.id}')">刪除</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('materialEmpty').style.display = rows.length? 'none':'block';
+
+  const totalDiv = document.getElementById('materialCaseTotal');
+  if(filterCase!=='all'){
+    const total = rows.reduce((s,m)=>s+m.qty*m.price,0);
+    totalDiv.textContent = `這個案件目前材料成本：${fmtMoney(total)}`;
+  } else {
+    totalDiv.textContent = '';
+  }
+}
+
+/* ---------------- 工班管理 ---------------- */
+async function addTeam(){
+  const name = document.getElementById('teamName').value.trim();
+  const phone = document.getElementById('teamPhone').value.trim();
+  if(!name){ await customAlert('請輸入工班名稱'); return; }
+  if(teams.some(t=>t.name===name)){ await customAlert('這個工班已經在名單裡了'); return; }
+  teams.push({id:uid(), name, phone});
+  save(KEYS.teams, teams);
+  document.getElementById('teamName').value='';
+  document.getElementById('teamPhone').value='';
+  renderTeamChips();
+}
+async function deleteTeam(id){
+  const ok = await customConfirm('確定要刪除這個工班嗎？（過去的工資紀錄不會被刪除）');
+  if(!ok) return;
+  teams = teams.filter(t=>t.id!==id);
+  save(KEYS.teams, teams);
+  renderTeamChips();
+}
+function teamName(id){
+  const t = teams.find(x=>x.id===id);
+  return t? t.name : '（已刪除的工班）';
+}
+function renderTeamChips(){
+  const chips = document.getElementById('teamChips');
+  chips.innerHTML = teams.length? teams.map(t=>`
+    <span class="tag pending" style="display:inline-flex; align-items:center; gap:8px; padding:6px 12px;">
+      ${t.name}${t.phone? ' · '+t.phone:''}
+      <button onclick="deleteTeam('${t.id}')" style="border:none; background:none; cursor:pointer; color:var(--pink); font-weight:900; padding:0;">✕</button>
+    </span>
+  `).join('') : `<span style="color:var(--gray); font-size:.85rem;">尚未新增工班，請先在上面新增</span>`;
+
+  const tmSel = document.getElementById('tmTeam');
+  const curT = tmSel.value;
+  tmSel.innerHTML = teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  if(teams.some(t=>t.id===curT)) tmSel.value = curT;
+
+  const fSel = document.getElementById('tmFilterTeam');
+  const curF = fSel.value;
+  fSel.innerHTML = `<option value="all">全部工班</option>` + teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  fSel.value = teams.some(t=>t.id===curF) ? curF : 'all';
+}
+
+let editingTeamPaymentId = null;
+async function addTeamPayment(){
+  const teamId = document.getElementById('tmTeam').value;
+  const caseId = document.getElementById('tmCase').value;
+  const date = document.getElementById('tmDate').value;
+  const amount = parseFloat(document.getElementById('tmAmount').value)||0;
+  const paid = document.getElementById('tmPaid').checked;
+  if(teams.length===0){ await customAlert('請先在上面新增至少一個工班'); return; }
+  if(!teamId){ await customAlert('請選擇工班'); return; }
+  if(!date||!amount){ await customAlert('請填寫日期與金額'); return; }
+  const rec = {teamId, caseId, date, amount, paid};
+  if(editingTeamPaymentId){
+    teamPayments = teamPayments.map(p=> p.id===editingTeamPaymentId? {...p, ...rec} : p);
+    cancelEditTeamPayment();
+  } else {
+    teamPayments.push({id:uid(), ...rec});
+  }
+  save(KEYS.teamPayments, teamPayments);
+  document.getElementById('tmDate').value='';
+  document.getElementById('tmAmount').value='';
+  document.getElementById('tmPaid').checked=false;
+  renderTeamPayments();
+}
+function editTeamPayment(id){
+  const p = teamPayments.find(x=>x.id===id);
+  if(!p) return;
+  editingTeamPaymentId = id;
+  document.getElementById('tmTeam').value = p.teamId;
+  document.getElementById('tmCase').value = p.caseId||'';
+  document.getElementById('tmDate').value = p.date;
+  document.getElementById('tmAmount').value = p.amount;
+  document.getElementById('tmPaid').checked = !!p.paid;
+  document.getElementById('tmFormTitle').textContent='編輯工資記錄';
+  document.getElementById('tmSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('tmCancelBtn').style.display='inline-flex';
+}
+function cancelEditTeamPayment(){
+  editingTeamPaymentId = null;
+  document.getElementById('tmDate').value='';
+  document.getElementById('tmAmount').value='';
+  document.getElementById('tmPaid').checked=false;
+  document.getElementById('tmFormTitle').textContent='新增工資記錄';
+  document.getElementById('tmSubmitBtn').textContent='＋ 新增記錄';
+  document.getElementById('tmCancelBtn').style.display='none';
+}
+async function deleteTeamPayment(id){
+  const ok = await customConfirm('確定要刪除這筆工資記錄嗎？');
+  if(!ok) return;
+  teamPayments = teamPayments.filter(p=>p.id!==id);
+  save(KEYS.teamPayments, teamPayments);
+  if(editingTeamPaymentId===id) cancelEditTeamPayment();
+  renderTeamPayments();
+}
+function renderTeamPayments(){
+  renderTeamChips();
+  refreshCaseSelectors();
+  const filterTeam = document.getElementById('tmFilterTeam').value;
+  let rows = teamPayments.filter(p=> filterTeam==='all' || p.teamId===filterTeam)
+                          .sort((a,b)=> b.date.localeCompare(a.date));
+  const body = document.getElementById('teamPaymentTableBody');
+  body.innerHTML = rows.map(p=>`
+    <tr>
+      <td>${p.date}</td>
+      <td>${teamName(p.teamId)}</td>
+      <td>${p.caseId? caseLabel(p.caseId) : '—'}</td>
+      <td>${fmtMoney(p.amount)}</td>
+      <td><span class="tag ${p.paid?'done':'unpaid'}">${p.paid?'已付款':'待付款'}</span></td>
+      <td class="row-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editTeamPayment('${p.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTeamPayment('${p.id}')">刪除</button>
+      </td>
+    </tr>`).join('');
+  document.getElementById('teamPaymentEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 收款管理 ---------------- */
+let editingPaymentId = null;
+async function addPayment(){
+  const caseId = document.getElementById('payCase').value;
+  const name = document.getElementById('payName').value.trim();
+  const amount = parseFloat(document.getElementById('payAmount').value)||0;
+  const received = document.getElementById('payReceived').checked;
+  if(!caseId){ await customAlert('請選擇所屬案件'); return; }
+  if(!name||!amount){ await customAlert('請填寫期別名稱與金額'); return; }
+  const rec = {caseId, name, amount, received};
+  if(editingPaymentId){
+    payments = payments.map(p=> p.id===editingPaymentId? {...p, ...rec} : p);
+    cancelEditPayment();
+  } else {
+    payments.push({id:uid(), ...rec});
+  }
+  save(KEYS.payments, payments);
+  document.getElementById('payName').value='';
+  document.getElementById('payAmount').value='';
+  document.getElementById('payReceived').checked=false;
+  renderPayments();
+}
+function editPayment(id){
+  const p = payments.find(x=>x.id===id);
+  if(!p) return;
+  editingPaymentId = id;
+  document.getElementById('payCase').value = p.caseId;
+  document.getElementById('payName').value = p.name;
+  document.getElementById('payAmount').value = p.amount;
+  document.getElementById('payReceived').checked = !!p.received;
+  document.getElementById('payFormTitle').textContent='編輯收款期別';
+  document.getElementById('paySubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('payCancelBtn').style.display='inline-flex';
+}
+function cancelEditPayment(){
+  editingPaymentId = null;
+  document.getElementById('payName').value='';
+  document.getElementById('payAmount').value='';
+  document.getElementById('payReceived').checked=false;
+  document.getElementById('payFormTitle').textContent='新增收款期別';
+  document.getElementById('paySubmitBtn').textContent='＋ 新增期別';
+  document.getElementById('payCancelBtn').style.display='none';
+}
+function toggleReceived(id){
+  payments = payments.map(p=> p.id===id? {...p, received:!p.received} : p);
+  save(KEYS.payments, payments);
+  renderPayments();
+}
+async function deletePayment(id){
+  const ok = await customConfirm('確定要刪除這筆收款期別嗎？');
+  if(!ok) return;
+  payments = payments.filter(p=>p.id!==id);
+  save(KEYS.payments, payments);
+  if(editingPaymentId===id) cancelEditPayment();
+  renderPayments();
+}
+function renderPayments(){
+  let rows = payments.filter(p=> p.caseId===currentDetailCaseId);
+  const list = document.getElementById('paymentList');
+  list.innerHTML = rows.map(p=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--light-pink);">
+      <div class="checkbox-row">
+        <input type="checkbox" ${p.received?'checked':''} onchange="toggleReceived('${p.id}')">
+        <div>${p.name}　<b>${fmtMoney(p.amount)}</b></div>
+      </div>
+      <div class="row-actions">
+        <span class="tag ${p.received?'done':'pending'}">${p.received?'已收款':'⏳ 待收'}</span>
+        <button class="btn btn-secondary btn-sm" onclick="editPayment('${p.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePayment('${p.id}')">刪除</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('paymentEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 追加工程 ---------------- */
+let editingChangeOrderId = null;
+async function addChangeOrder(){
+  const caseId = document.getElementById('coCase').value;
+  const name = document.getElementById('coName').value.trim();
+  const amount = parseFloat(document.getElementById('coAmount').value)||0;
+  const confirmed = document.getElementById('coConfirmed').checked;
+  if(!caseId){ await customAlert('請選擇所屬案件'); return; }
+  if(!name||!amount){ await customAlert('請填寫項目名稱與金額'); return; }
+  const rec = {caseId, name, amount, confirmed};
+  if(editingChangeOrderId){
+    changeOrders = changeOrders.map(c=> c.id===editingChangeOrderId? {...c, ...rec} : c);
+    cancelEditChangeOrder();
+  } else {
+    changeOrders.push({id:uid(), ...rec});
+  }
+  save(KEYS.changeOrders, changeOrders);
+  document.getElementById('coName').value='';
+  document.getElementById('coAmount').value='';
+  document.getElementById('coConfirmed').checked=false;
+  renderChangeOrders();
+}
+function editChangeOrder(id){
+  const c = changeOrders.find(x=>x.id===id);
+  if(!c) return;
+  editingChangeOrderId = id;
+  document.getElementById('coCase').value = c.caseId;
+  document.getElementById('coName').value = c.name;
+  document.getElementById('coAmount').value = c.amount;
+  document.getElementById('coConfirmed').checked = !!c.confirmed;
+  document.getElementById('coFormTitle').textContent='編輯追加項目';
+  document.getElementById('coSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('coCancelBtn').style.display='inline-flex';
+}
+function cancelEditChangeOrder(){
+  editingChangeOrderId = null;
+  document.getElementById('coName').value='';
+  document.getElementById('coAmount').value='';
+  document.getElementById('coConfirmed').checked=false;
+  document.getElementById('coFormTitle').textContent='新增追加項目';
+  document.getElementById('coSubmitBtn').textContent='＋ 新增追加項目';
+  document.getElementById('coCancelBtn').style.display='none';
+}
+function toggleConfirmed(id){
+  changeOrders = changeOrders.map(c=> c.id===id? {...c, confirmed:!c.confirmed} : c);
+  save(KEYS.changeOrders, changeOrders);
+  renderChangeOrders();
+}
+async function deleteChangeOrder(id){
+  const ok = await customConfirm('確定要刪除這個追加項目嗎？');
+  if(!ok) return;
+  changeOrders = changeOrders.filter(c=>c.id!==id);
+  save(KEYS.changeOrders, changeOrders);
+  if(editingChangeOrderId===id) cancelEditChangeOrder();
+  renderChangeOrders();
+}
+function renderChangeOrders(){
+  let rows = changeOrders.filter(c=> c.caseId===currentDetailCaseId);
+  const list = document.getElementById('changeOrderList');
+  list.innerHTML = rows.map(c=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--light-pink);">
+      <div class="checkbox-row">
+        <input type="checkbox" ${c.confirmed?'checked':''} onchange="toggleConfirmed('${c.id}')">
+        <div>${c.name}　<b>+${fmtMoney(c.amount)}</b></div>
+      </div>
+      <div class="row-actions">
+        <span class="tag ${c.confirmed?'done':'pending'}">${c.confirmed?'客戶已確認 ☑️':'尚未確認'}</span>
+        <button class="btn btn-secondary btn-sm" onclick="editChangeOrder('${c.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteChangeOrder('${c.id}')">刪除</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('changeOrderEmpty').style.display = rows.length? 'none':'block';
+  const total = rows.reduce((s,c)=>s+c.amount,0);
+  document.getElementById('changeOrderTotal').textContent = rows.length? `🔵 追加總額：${fmtMoney(total)}` : '';
+}
+
+/* ---------------- 案件日誌 ---------------- */
+let editingCaseLogId = null;
+function toggleCaseLogFields(){
+  const type = document.getElementById('clType').value;
+  ['daily','issue','change','contact'].forEach(t=>{
+    document.getElementById('clFields-'+t).style.display = (t===type)? 'block':'none';
+  });
+}
+function clearCaseLogFields(){
+  ['clDailyWork','clDailyWorkers','clDailyDone','clDailyIssue','clDailyTomorrow',
+   'clIssueTitle','clIssueDesc','clIssueFix','clIssueExtraAmount',
+   'clChangeOld','clChangeNew','clChangeOldCost','clChangeNewCost',
+   'clContactContent'].forEach(id=>document.getElementById(id).value='');
+  ['clIssueExtra','clIssueNotified','clChangeConfirmed','clChangeNotified','clChangeCharged'].forEach(id=>document.getElementById(id).checked=false);
+  document.getElementById('clContactMethod').value='電話';
+}
+async function addCaseLog(){
+  const caseId = document.getElementById('clCase').value;
+  const date = document.getElementById('clDate').value;
+  const type = document.getElementById('clType').value;
+  if(!caseId){ await customAlert('請選擇所屬案件'); return; }
+  if(!date){ await customAlert('請填寫日期'); return; }
+
+  let data = {};
+  if(type==='daily'){
+    data = {
+      work: document.getElementById('clDailyWork').value.trim(),
+      workers: document.getElementById('clDailyWorkers').value.trim(),
+      done: document.getElementById('clDailyDone').value.trim(),
+      issue: document.getElementById('clDailyIssue').value.trim(),
+      tomorrow: document.getElementById('clDailyTomorrow').value.trim(),
+    };
+    if(!data.work){ await customAlert('請填寫今日工程'); return; }
+  } else if(type==='issue'){
+    data = {
+      title: document.getElementById('clIssueTitle').value.trim(),
+      desc: document.getElementById('clIssueDesc').value.trim(),
+      fix: document.getElementById('clIssueFix').value.trim(),
+      extra: document.getElementById('clIssueExtra').checked,
+      extraAmount: parseFloat(document.getElementById('clIssueExtraAmount').value)||0,
+      notified: document.getElementById('clIssueNotified').checked,
+    };
+    if(!data.title){ await customAlert('請填寫問題標題'); return; }
+  } else if(type==='change'){
+    data = {
+      oldPlan: document.getElementById('clChangeOld').value.trim(),
+      newPlan: document.getElementById('clChangeNew').value.trim(),
+      oldCost: parseFloat(document.getElementById('clChangeOldCost').value)||0,
+      newCost: parseFloat(document.getElementById('clChangeNewCost').value)||0,
+      confirmed: document.getElementById('clChangeConfirmed').checked,
+      notified: document.getElementById('clChangeNotified').checked,
+      charged: document.getElementById('clChangeCharged').checked,
+    };
+    if(!data.oldPlan || !data.newPlan){ await customAlert('請填寫原方案與修改後方案'); return; }
+  } else if(type==='contact'){
+    data = {
+      method: document.getElementById('clContactMethod').value,
+      content: document.getElementById('clContactContent').value.trim(),
+    };
+    if(!data.content){ await customAlert('請填寫聯絡內容'); return; }
+  }
+
+  const rec = {caseId, date, type, data};
+  if(editingCaseLogId){
+    caseLogs = caseLogs.map(l=> l.id===editingCaseLogId? {...l, ...rec} : l);
+    cancelEditCaseLog();
+  } else {
+    caseLogs.push({id:uid(), ...rec});
+  }
+  save(KEYS.caseLogs, caseLogs);
+  clearCaseLogFields();
+  document.getElementById('clDate').value='';
+  renderCaseLogs();
+}
+function editCaseLog(id){
+  const l = caseLogs.find(x=>x.id===id);
+  if(!l) return;
+  editingCaseLogId = id;
+  document.getElementById('clCase').value = l.caseId;
+  document.getElementById('clDate').value = l.date;
+  document.getElementById('clType').value = l.type;
+  toggleCaseLogFields();
+  if(l.type==='daily'){
+    document.getElementById('clDailyWork').value = l.data.work||'';
+    document.getElementById('clDailyWorkers').value = l.data.workers||'';
+    document.getElementById('clDailyDone').value = l.data.done||'';
+    document.getElementById('clDailyIssue').value = l.data.issue||'';
+    document.getElementById('clDailyTomorrow').value = l.data.tomorrow||'';
+  } else if(l.type==='issue'){
+    document.getElementById('clIssueTitle').value = l.data.title||'';
+    document.getElementById('clIssueDesc').value = l.data.desc||'';
+    document.getElementById('clIssueFix').value = l.data.fix||'';
+    document.getElementById('clIssueExtra').checked = !!l.data.extra;
+    document.getElementById('clIssueExtraAmount').value = l.data.extraAmount||'';
+    document.getElementById('clIssueNotified').checked = !!l.data.notified;
+  } else if(l.type==='change'){
+    document.getElementById('clChangeOld').value = l.data.oldPlan||'';
+    document.getElementById('clChangeNew').value = l.data.newPlan||'';
+    document.getElementById('clChangeOldCost').value = l.data.oldCost||'';
+    document.getElementById('clChangeNewCost').value = l.data.newCost||'';
+    document.getElementById('clChangeConfirmed').checked = !!l.data.confirmed;
+    document.getElementById('clChangeNotified').checked = !!l.data.notified;
+    document.getElementById('clChangeCharged').checked = !!l.data.charged;
+  } else if(l.type==='contact'){
+    document.getElementById('clContactMethod').value = l.data.method||'電話';
+    document.getElementById('clContactContent').value = l.data.content||'';
+  }
+  document.getElementById('clFormTitle').textContent='編輯記錄';
+  document.getElementById('clSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('clCancelBtn').style.display='inline-flex';
+  document.getElementById('clCase').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function cancelEditCaseLog(){
+  editingCaseLogId = null;
+  clearCaseLogFields();
+  document.getElementById('clDate').value='';
+  document.getElementById('clType').value='daily';
+  toggleCaseLogFields();
+  document.getElementById('clFormTitle').textContent='新增一筆記錄';
+  document.getElementById('clSubmitBtn').textContent='＋ 新增記錄';
+  document.getElementById('clCancelBtn').style.display='none';
+}
+async function deleteCaseLog(id){
+  const ok = await customConfirm('確定要刪除這筆記錄嗎？');
+  if(!ok) return;
+  caseLogs = caseLogs.filter(l=>l.id!==id);
+  save(KEYS.caseLogs, caseLogs);
+  if(editingCaseLogId===id) cancelEditCaseLog();
+  renderCaseLogs();
+}
+const caseLogTypeIcon = { daily:'📝', issue:'⚠️', change:'✏️', contact:'👤' };
+const caseLogTypeName = { daily:'工程日誌', issue:'問題／異常', change:'客戶變更', contact:'客戶聯絡' };
+function renderCaseLogSummary(l){
+  if(l.type==='daily') return `今日工程：${l.data.work}${l.data.workers? '　人員：'+l.data.workers:''}${l.data.done? '　完成：'+l.data.done:''}${l.data.issue? '　⚠️問題：'+l.data.issue:''}${l.data.tomorrow? '　明日：'+l.data.tomorrow:''}`;
+  if(l.type==='issue') return `${l.data.title}${l.data.desc? '　'+l.data.desc:''}${l.data.fix? '　處理：'+l.data.fix:''}${l.data.extra? `　💰追加 ${fmtMoney(l.data.extraAmount)}`:''}${l.data.notified? '　✅已通知客戶':'　❌尚未通知客戶'}`;
+  if(l.type==='change') return `${l.data.oldPlan} → ${l.data.newPlan}　${fmtMoney(l.data.oldCost)} → ${fmtMoney(l.data.newCost)}（差額 ${l.data.newCost-l.data.oldCost>=0?'+':''}${fmtMoney(l.data.newCost-l.data.oldCost)}）${l.data.confirmed?' ☑️客戶確認':' ☐客戶確認'}${l.data.notified?' ☑️已通知':' ☐已通知'}${l.data.charged?' ☑️已收費':' ☐已收費'}`;
+  if(l.type==='contact') return `${l.data.method}：${l.data.content}`;
+  return '';
+}
+function renderCaseLogs(){
+  const filterType = document.getElementById('clFilterType').value;
+  let rows = caseLogs.filter(l=>{
+    const okCase = l.caseId===currentDetailCaseId;
+    const okType = filterType==='all' || l.type===filterType;
+    return okCase && okType;
+  }).sort((a,b)=> b.date.localeCompare(a.date));
+  const list = document.getElementById('caseLogList');
+  list.innerHTML = rows.map(l=>`
+    <div style="padding:12px 4px; border-bottom:1px solid var(--light-pink);">
+      <div style="display:flex; justify-content:space-between; align-items:start; gap:10px;">
+        <div style="flex:1;">
+          <div style="font-size:.8rem; color:var(--gray); margin-bottom:3px;">${caseLogTypeIcon[l.type]} ${caseLogTypeName[l.type]}　${l.date}</div>
+          <div style="font-size:.88rem; color:var(--dark);">${renderCaseLogSummary(l)}</div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-secondary btn-sm" onclick="editCaseLog('${l.id}')">編輯</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCaseLog('${l.id}')">刪除</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('caseLogEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 保固管理 ---------------- */
+let editingWarrantyId = null;
+function addMonthsToDate(dateStr, months){
+  const d = new Date(dateStr);
+  d.setMonth(d.getMonth()+months);
+  return d.toISOString().slice(0,10);
+}
+async function addWarranty(){
+  const caseId = document.getElementById('wrCase').value;
+  const completionDate = document.getElementById('wrCompletionDate').value;
+  const months = parseFloat(document.getElementById('wrMonths').value)||0;
+  const note = document.getElementById('wrNote').value.trim();
+  if(!caseId){ await customAlert('請選擇所屬案件'); return; }
+  if(!completionDate || !months){ await customAlert('請填寫完工日與保固期間'); return; }
+  const endDate = addMonthsToDate(completionDate, months);
+  const rec = {caseId, completionDate, months, endDate, note};
+  if(editingWarrantyId){
+    warranties = warranties.map(w=> w.id===editingWarrantyId? {...w, ...rec} : w);
+    cancelEditWarranty();
+  } else {
+    warranties.push({id:uid(), ...rec});
+  }
+  save(KEYS.warranties, warranties);
+  document.getElementById('wrCompletionDate').value='';
+  document.getElementById('wrMonths').value='';
+  document.getElementById('wrNote').value='';
+  renderWarranties();
+}
+function editWarranty(id){
+  const w = warranties.find(x=>x.id===id);
+  if(!w) return;
+  editingWarrantyId = id;
+  document.getElementById('wrCase').value = w.caseId;
+  document.getElementById('wrCompletionDate').value = w.completionDate;
+  document.getElementById('wrMonths').value = w.months;
+  document.getElementById('wrNote').value = w.note||'';
+  document.getElementById('wrFormTitle').textContent='編輯保固紀錄';
+  document.getElementById('wrSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('wrCancelBtn').style.display='inline-flex';
+}
+function cancelEditWarranty(){
+  editingWarrantyId = null;
+  document.getElementById('wrCompletionDate').value='';
+  document.getElementById('wrMonths').value='';
+  document.getElementById('wrNote').value='';
+  document.getElementById('wrFormTitle').textContent='新增保固紀錄';
+  document.getElementById('wrSubmitBtn').textContent='＋ 新增保固紀錄';
+  document.getElementById('wrCancelBtn').style.display='none';
+}
+async function deleteWarranty(id){
+  const ok = await customConfirm('確定要刪除這筆保固紀錄嗎？');
+  if(!ok) return;
+  warranties = warranties.filter(w=>w.id!==id);
+  save(KEYS.warranties, warranties);
+  if(editingWarrantyId===id) cancelEditWarranty();
+  renderWarranties();
+}
+function renderWarranties(){
+  const todayStr = new Date().toISOString().slice(0,10);
+  const in30 = new Date(); in30.setDate(in30.getDate()+30);
+  const in30Str = in30.toISOString().slice(0,10);
+  let rows = warranties.filter(w=>w.caseId===currentDetailCaseId).sort((a,b)=> a.endDate.localeCompare(b.endDate));
+  const list = document.getElementById('warrantyList');
+  list.innerHTML = rows.map(w=>{
+    let statusTag;
+    if(w.endDate < todayStr) statusTag = `<span class="tag unpaid">已過期</span>`;
+    else if(w.endDate <= in30Str) statusTag = `<span class="tag unpaid">🔔 30天內到期</span>`;
+    else statusTag = `<span class="tag done">保固中</span>`;
+    return `
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--light-pink);">
+      <div>
+        <div style="font-size:.85rem;">完工 ${w.completionDate}　保固到 ${w.endDate}${w.note? '　'+w.note:''}</div>
+      </div>
+      <div class="row-actions">
+        ${statusTag}
+        <button class="btn btn-secondary btn-sm" onclick="editWarranty('${w.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteWarranty('${w.id}')">刪除</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('warrantyEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 保固維修紀錄 ---------------- */
+let editingWarrantyClaimId = null;
+async function addWarrantyClaim(){
+  const caseId = document.getElementById('wcCase').value;
+  const date = document.getElementById('wcDate').value;
+  const desc = document.getElementById('wcDesc').value.trim();
+  if(!caseId){ await customAlert('請選擇所屬案件'); return; }
+  if(!date || !desc){ await customAlert('請填寫日期與問題描述'); return; }
+  const rec = {caseId, date, desc, resolved:false};
+  if(editingWarrantyClaimId){
+    warrantyClaims = warrantyClaims.map(c=> c.id===editingWarrantyClaimId? {...c, caseId, date, desc} : c);
+    cancelEditWarrantyClaim();
+  } else {
+    warrantyClaims.push({id:uid(), ...rec});
+  }
+  save(KEYS.warrantyClaims, warrantyClaims);
+  document.getElementById('wcDate').value='';
+  document.getElementById('wcDesc').value='';
+  renderWarrantyClaims();
+}
+function editWarrantyClaim(id){
+  const c = warrantyClaims.find(x=>x.id===id);
+  if(!c) return;
+  editingWarrantyClaimId = id;
+  document.getElementById('wcCase').value = c.caseId;
+  document.getElementById('wcDate').value = c.date;
+  document.getElementById('wcDesc').value = c.desc;
+  document.getElementById('wcFormTitle').textContent='編輯保固維修紀錄';
+  document.getElementById('wcSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('wcCancelBtn').style.display='inline-flex';
+}
+function cancelEditWarrantyClaim(){
+  editingWarrantyClaimId = null;
+  document.getElementById('wcDate').value='';
+  document.getElementById('wcDesc').value='';
+  document.getElementById('wcFormTitle').textContent='新增保固維修紀錄';
+  document.getElementById('wcSubmitBtn').textContent='＋ 新增維修紀錄';
+  document.getElementById('wcCancelBtn').style.display='none';
+}
+function toggleWarrantyClaimResolved(id){
+  warrantyClaims = warrantyClaims.map(c=> c.id===id? {...c, resolved:!c.resolved} : c);
+  save(KEYS.warrantyClaims, warrantyClaims);
+  renderWarrantyClaims();
+}
+async function deleteWarrantyClaim(id){
+  const ok = await customConfirm('確定要刪除這筆維修紀錄嗎？');
+  if(!ok) return;
+  warrantyClaims = warrantyClaims.filter(c=>c.id!==id);
+  save(KEYS.warrantyClaims, warrantyClaims);
+  if(editingWarrantyClaimId===id) cancelEditWarrantyClaim();
+  renderWarrantyClaims();
+}
+function renderWarrantyClaims(){
+  let rows = warrantyClaims.filter(c=>c.caseId===currentDetailCaseId).sort((a,b)=> b.date.localeCompare(a.date));
+  const list = document.getElementById('warrantyClaimList');
+  list.innerHTML = rows.map(c=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--light-pink);">
+      <div class="checkbox-row">
+        <input type="checkbox" ${c.resolved?'checked':''} onchange="toggleWarrantyClaimResolved('${c.id}')">
+        <div>
+          <div>${c.desc}</div>
+          <div style="font-size:.75rem; color:var(--gray); margin-top:2px;">${c.date}</div>
+        </div>
+      </div>
+      <div class="row-actions">
+        <span class="tag ${c.resolved?'done':'unpaid'}">${c.resolved?'已處理':'待處理'}</span>
+        <button class="btn btn-secondary btn-sm" onclick="editWarrantyClaim('${c.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteWarrantyClaim('${c.id}')">刪除</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('warrantyClaimEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 廢棄物／清運管理 ---------------- */
+let editingWasteId = null;
+async function addWaste(){
+  const caseId = document.getElementById('wsCase').value;
+  const type = document.getElementById('wsType').value.trim();
+  const qty = document.getElementById('wsQty').value.trim();
+  const date = document.getElementById('wsDate').value;
+  const vendor = document.getElementById('wsVendor').value.trim();
+  const fee = parseFloat(document.getElementById('wsFee').value)||0;
+  const paid = document.getElementById('wsPaid').checked;
+  if(!caseId){ await customAlert('請選擇所屬案件'); return; }
+  if(!type){ await customAlert('請填寫廢棄物種類'); return; }
+  const rec = {caseId, type, qty, date, vendor, fee, paid};
+  if(editingWasteId){
+    waste = waste.map(w=> w.id===editingWasteId? {...w, ...rec} : w);
+    cancelEditWaste();
+  } else {
+    waste.push({id:uid(), ...rec});
+  }
+  save(KEYS.waste, waste);
+  ['wsType','wsQty','wsVendor','wsFee'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('wsDate').value='';
+  document.getElementById('wsPaid').checked=false;
+  renderWaste();
+}
+function editWaste(id){
+  const w = waste.find(x=>x.id===id);
+  if(!w) return;
+  editingWasteId = id;
+  document.getElementById('wsCase').value = w.caseId;
+  document.getElementById('wsType').value = w.type;
+  document.getElementById('wsQty').value = w.qty||'';
+  document.getElementById('wsDate').value = w.date||'';
+  document.getElementById('wsVendor').value = w.vendor||'';
+  document.getElementById('wsFee').value = w.fee;
+  document.getElementById('wsPaid').checked = !!w.paid;
+  document.getElementById('wsFormTitle').textContent='編輯清運紀錄';
+  document.getElementById('wsSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('wsCancelBtn').style.display='inline-flex';
+}
+function cancelEditWaste(){
+  editingWasteId = null;
+  ['wsType','wsQty','wsVendor','wsFee'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('wsDate').value='';
+  document.getElementById('wsPaid').checked=false;
+  document.getElementById('wsFormTitle').textContent='新增清運紀錄';
+  document.getElementById('wsSubmitBtn').textContent='＋ 新增清運紀錄';
+  document.getElementById('wsCancelBtn').style.display='none';
+}
+async function deleteWaste(id){
+  const ok = await customConfirm('確定要刪除這筆清運紀錄嗎？');
+  if(!ok) return;
+  waste = waste.filter(w=>w.id!==id);
+  save(KEYS.waste, waste);
+  if(editingWasteId===id) cancelEditWaste();
+  renderWaste();
+}
+function renderWaste(){
+  let rows = waste.filter(w=> w.caseId===currentDetailCaseId);
+  const body = document.getElementById('wasteTableBody');
+  body.innerHTML = rows.map(w=>`
+    <tr>
+      <td>${w.date||'—'}</td>
+      <td>${w.type}</td>
+      <td>${w.qty||'—'}</td>
+      <td>${w.vendor||'—'}</td>
+      <td><b>${fmtMoney(w.fee)}</b></td>
+      <td><span class="tag ${w.paid?'done':'unpaid'}">${w.paid?'已付款':'未付款'}</span></td>
+      <td class="row-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editWaste('${w.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteWaste('${w.id}')">刪除</button>
+      </td>
+    </tr>`).join('');
+  document.getElementById('wasteEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 合約／文件追蹤 ---------------- */
+let editingContractId = null;
+const contractStatusLabel = { draft:'未產生', created:'已產生', signed:'已簽署', sent:'已寄出', archived:'已歸檔' };
+async function addContract(){
+  const name = document.getElementById('ctName').value.trim();
+  const status = document.getElementById('ctStatus').value;
+  const date = document.getElementById('ctDate').value;
+  const note = document.getElementById('ctNote').value.trim();
+  if(!name){ await customAlert('請填寫文件名稱'); return; }
+  const rec = {caseId: currentDetailCaseId, name, status, date, note};
+  if(editingContractId){
+    contracts = contracts.map(c=> c.id===editingContractId? {...c, ...rec} : c);
+    cancelEditContract();
+  } else {
+    contracts.push({id:uid(), ...rec});
+  }
+  save(KEYS.contracts, contracts);
+  document.getElementById('ctName').value='';
+  document.getElementById('ctDate').value='';
+  document.getElementById('ctNote').value='';
+  document.getElementById('ctStatus').value='draft';
+  renderContracts();
+}
+function editContract(id){
+  const c = contracts.find(x=>x.id===id);
+  if(!c) return;
+  editingContractId = id;
+  document.getElementById('ctName').value = c.name;
+  document.getElementById('ctStatus').value = c.status;
+  document.getElementById('ctDate').value = c.date||'';
+  document.getElementById('ctNote').value = c.note||'';
+  document.getElementById('ctFormTitle').textContent='編輯文件記錄';
+  document.getElementById('ctSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('ctCancelBtn').style.display='inline-flex';
+}
+function cancelEditContract(){
+  editingContractId = null;
+  document.getElementById('ctName').value='';
+  document.getElementById('ctDate').value='';
+  document.getElementById('ctNote').value='';
+  document.getElementById('ctStatus').value='draft';
+  document.getElementById('ctFormTitle').textContent='新增文件記錄';
+  document.getElementById('ctSubmitBtn').textContent='＋ 新增文件記錄';
+  document.getElementById('ctCancelBtn').style.display='none';
+}
+async function deleteContract(id){
+  const ok = await customConfirm('確定要刪除這筆文件記錄嗎？');
+  if(!ok) return;
+  contracts = contracts.filter(c=>c.id!==id);
+  save(KEYS.contracts, contracts);
+  if(editingContractId===id) cancelEditContract();
+  renderContracts();
+}
+function renderContracts(){
+  let rows = contracts.filter(c=>c.caseId===currentDetailCaseId);
+  const list = document.getElementById('contractList');
+  list.innerHTML = rows.map(c=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--light-pink);">
+      <div>
+        <div>${c.name}${c.date? '　'+c.date:''}</div>
+        ${c.note? `<div style="font-size:.75rem; color:var(--gray); margin-top:2px;">${c.note}</div>`:''}
+      </div>
+      <div class="row-actions">
+        <span class="tag ${c.status==='archived'||c.status==='signed'?'done':c.status==='draft'?'pending':'unpaid'}">${contractStatusLabel[c.status]}</span>
+        <button class="btn btn-secondary btn-sm" onclick="editContract('${c.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteContract('${c.id}')">刪除</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('contractEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 員工管理 ---------------- */
+async function addEmployee(){
+  const name = document.getElementById('empName').value.trim();
+  const rate = parseFloat(document.getElementById('empRate').value)||0;
+  if(!name){ await customAlert('請輸入員工姓名'); return; }
+  if(!rate){ await customAlert('請輸入時薪'); return; }
+  if(employees.some(e=>e.name===name && !e.deleted)){ await customAlert('這位員工已經在名單裡了'); return; }
+  employees.push({id:uid(), name, rate, deleted:false});
+  save(KEYS.employees, employees);
+  document.getElementById('empName').value='';
+  document.getElementById('empRate').value='';
+  renderEmployees();
+  renderClockStatus();
+}
+async function updateEmployeeRate(id, value){
+  const rate = parseFloat(value)||0;
+  employees = employees.map(e=> e.id===id? {...e, rate} : e);
+  save(KEYS.employees, employees);
+}
+async function deleteEmployee(id){
+  const ok = await customConfirm('確定要刪除這位員工嗎？（過去的打卡紀錄不會被刪除）');
+  if(!ok) return;
+  employees = employees.map(e=> e.id===id? {...e, deleted:true} : e);
+  save(KEYS.employees, employees);
+  renderEmployees();
+  renderClockStatus();
+}
+function renderEmployees(){
+  const activeEmps = employees.filter(e=>!e.deleted);
+  const chips = document.getElementById('employeeChips');
+  chips.innerHTML = activeEmps.length? activeEmps.map(e=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); border-radius:10px; padding:8px 12px;">
+      <span style="font-weight:700;">${e.name}</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:.78rem; color:var(--gray);">時薪</span>
+        <input type="number" value="${e.rate}" style="width:80px; margin-bottom:0; padding:6px 8px;" onchange="updateEmployeeRate('${e.id}', this.value)">
+        <button onclick="deleteEmployee('${e.id}')" style="border:none; background:none; cursor:pointer; color:var(--pink); font-weight:900; padding:0 4px;">✕</button>
+      </div>
+    </div>
+  `).join('') : `<span style="color:var(--gray); font-size:.85rem;">尚未新增員工，請先在上面新增</span>`;
+
+  const wSel = document.getElementById('wEmployee');
+  const currentW = wSel.value;
+  wSel.innerHTML = activeEmps.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  if(activeEmps.some(e=>e.id===currentW)) wSel.value = currentW;
+
+  const fSel = document.getElementById('wFilterEmployee');
+  const currentF = fSel.value;
+  fSel.innerHTML = `<option value="all">全部員工</option>` + activeEmps.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  fSel.value = activeEmps.some(e=>e.id===currentF) ? currentF : 'all';
+
+  const cSel = document.getElementById('clockEmployee');
+  if(cSel){
+    const currentC = cSel.value;
+    cSel.innerHTML = activeEmps.map(e=>`<option value="${e.id}">${e.name}</option>`).join('') || `<option value="">尚未新增員工</option>`;
+    if(activeEmps.some(e=>e.id===currentC)) cSel.value = currentC;
+  }
+}
+function employeeName(id){
+  const e = employees.find(x=>x.id===id);
+  return e? e.name : '（已刪除的員工）';
+}
+
+/* ---------------- 今日打卡（按鈕式） ---------------- */
+let clockTimer = null;
+function getTodayWorkRecord(employeeId){
+  const t = todayStrForClock();
+  return work.find(w=> w.employeeId===employeeId && w.date===t && w.type==='work');
+}
+function todayStrForClock(){ return new Date().toISOString().slice(0,10); }
+function nowTimeStrForClock(){ return new Date().toTimeString().slice(0,5); }
+async function doClockIn(){
+  const employeeId = document.getElementById('clockEmployee').value;
+  if(!employeeId){ await customAlert('請先新增並選擇員工'); return; }
+  let rec = getTodayWorkRecord(employeeId);
+  if(rec && rec.start){ await customAlert('今天已經打過上班卡了'); return; }
+  if(rec){
+    rec.start = nowTimeStrForClock();
+  } else {
+    rec = {id:uid(), employeeId, date:todayStrForClock(), type:'work', start:nowTimeStrForClock(), end:'', hours:0, rate:0, pay:0, note:''};
+    work.push(rec);
+  }
+  save(KEYS.work, work);
+  renderClockStatus();
+  renderWork();
+}
+async function doClockOut(){
+  const employeeId = document.getElementById('clockEmployee').value;
+  if(!employeeId){ await customAlert('請先新增並選擇員工'); return; }
+  const rec = getTodayWorkRecord(employeeId);
+  if(!rec || !rec.start){ await customAlert('要先按上班才能按下班喔'); return; }
+  if(rec.end){ await customAlert('今天已經打過下班卡了'); return; }
+  rec.end = nowTimeStrForClock();
+  const emp = employees.find(e=>e.id===employeeId);
+  const rate = emp? emp.rate : 0;
+  rec.hours = hoursBetween(rec.start, rec.end);
+  rec.rate = rate;
+  rec.pay = rec.hours * rate;
+  work = work.map(w=> w.id===rec.id? rec : w);
+  save(KEYS.work, work);
+  renderClockStatus();
+  renderWork();
+}
+function renderClockStatus(){
+  if(clockTimer) clearInterval(clockTimer);
+  const employeeId = document.getElementById('clockEmployee') ? document.getElementById('clockEmployee').value : '';
+  const hero = document.getElementById('clockStatusHero');
+  const inBtn = document.getElementById('clockInBtn');
+  const outBtn = document.getElementById('clockOutBtn');
+  if(!hero) return;
+
+  if(!employeeId){
+    hero.innerHTML = `<div style="font-weight:700;">請先新增並選擇員工</div>`;
+    inBtn.disabled = true; outBtn.disabled = true;
+    return;
+  }
+  const rec = getTodayWorkRecord(employeeId);
+
+  function updateElapsed(){
+    if(rec && rec.start && !rec.end){
+      const [sh,sm]=rec.start.split(':').map(Number);
+      const now = new Date();
+      let mins = (now.getHours()*60+now.getMinutes())-(sh*60+sm);
+      if(mins<0) mins += 24*60;
+      const h = Math.floor(mins/60), m = mins%60;
+      hero.innerHTML = `
+        <div style="font-weight:700; margin-bottom:6px;">🟢 上班中（${rec.start} 開始）</div>
+        <div style="font-size:1.8rem; font-weight:900; color:var(--pink);">${h} 小時 ${m} 分</div>
+        <div style="font-size:.78rem; color:var(--gray);">今天已上班</div>`;
+    }
+  }
+
+  if(!rec || !rec.start){
+    hero.innerHTML = `<div style="font-weight:700;">⚪ 今天還沒打卡</div>`;
+    inBtn.disabled = false; outBtn.disabled = true;
+  } else if(rec.start && !rec.end){
+    updateElapsed();
+    clockTimer = setInterval(updateElapsed, 30000);
+    inBtn.disabled = true; outBtn.disabled = false;
+  } else {
+    hero.innerHTML = `
+      <div style="font-weight:700; margin-bottom:6px;">✅ 今天打卡完成</div>
+      <div style="font-size:1.8rem; font-weight:900; color:var(--pink);">${fmtMoney(rec.pay)}</div>
+      <div style="font-size:.78rem; color:var(--gray);">${rec.start} － ${rec.end}</div>`;
+    inBtn.disabled = true; outBtn.disabled = true;
+  }
+}
+
+/* ---------------- 工時 ---------------- */
+function hoursBetween(start,end){
+  if(!start||!end) return 0;
+  const [sh,sm]=start.split(':').map(Number);
+  const [eh,em]=end.split(':').map(Number);
+  let mins = (eh*60+em)-(sh*60+sm);
+  if(mins<0) mins += 24*60;
+  return mins/60;
+}
+let editingWorkId = null;
+function toggleWorkType(){
+  const isLeave = document.getElementById('wType').value === 'leave';
+  document.getElementById('wWorkFields').style.display = isLeave? 'none':'grid';
+  document.getElementById('wLeaveFields').style.display = isLeave? 'grid':'none';
+}
+async function addWork(){
+  const employeeId=document.getElementById('wEmployee').value;
+  const date=document.getElementById('wDate').value;
+  const type=document.getElementById('wType').value;
+  const note=document.getElementById('wNote').value.trim();
+  if(employees.filter(e=>!e.deleted).length===0){ await customAlert('請先在上面新增至少一位員工'); return; }
+  if(!employeeId){ await customAlert('請選擇員工'); return; }
+  if(!date){ await customAlert('請填寫日期'); return; }
+
+  let rec;
+  if(type==='leave'){
+    const leaveType = document.getElementById('wLeaveType').value;
+    rec = {employeeId, date, type:'leave', leaveType, start:'', end:'', hours:0, rate:0, pay:0, note};
+  } else {
+    const start=document.getElementById('wStart').value;
+    const end=document.getElementById('wEnd').value;
+    let rate;
+    if(editingWorkId){
+      const existing = work.find(w=>w.id===editingWorkId);
+      rate = existing? existing.rate : 0;
+    } else {
+      const emp = employees.find(e=>e.id===employeeId);
+      rate = emp? emp.rate : 0;
+    }
+    if(!start||!end){ await customAlert('請填寫上班與下班時間'); return; }
+    const hrs = hoursBetween(start,end);
+    rec = {employeeId, date, type:'work', start, end, hours:hrs, rate, pay:hrs*rate, note};
+  }
+
+  if(editingWorkId){
+    work = work.map(w=> w.id===editingWorkId? {...w, ...rec} : w);
+    cancelEditWork();
+  } else {
+    work.push({id:uid(), ...rec});
+  }
+  save(KEYS.work, work);
+  document.getElementById('wDate').value='';
+  document.getElementById('wStart').value='';
+  document.getElementById('wEnd').value='';
+  document.getElementById('wNote').value='';
+  document.getElementById('wType').value='work';
+  toggleWorkType();
+  renderWork();
+  renderClockStatus();
+}
+function editWork(id){
+  const w = work.find(x=>x.id===id);
+  if(!w) return;
+  editingWorkId = id;
+  document.getElementById('wEmployee').value=w.employeeId||'';
+  document.getElementById('wDate').value=w.date;
+  document.getElementById('wType').value=w.type||'work';
+  toggleWorkType();
+  if(w.type==='leave'){
+    document.getElementById('wLeaveType').value=w.leaveType||'特休';
+  } else {
+    document.getElementById('wStart').value=w.start;
+    document.getElementById('wEnd').value=w.end;
+  }
+  document.getElementById('wNote').value=w.note||'';
+  document.getElementById('wFormTitle').textContent='編輯打卡紀錄';
+  document.getElementById('wSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('wCancelBtn').style.display='inline-flex';
+  showPage('work');
+  document.getElementById('wDate').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function cancelEditWork(){
+  editingWorkId = null;
+  document.getElementById('wDate').value='';
+  document.getElementById('wStart').value='';
+  document.getElementById('wEnd').value='';
+  document.getElementById('wNote').value='';
+  document.getElementById('wType').value='work';
+  toggleWorkType();
+  document.getElementById('wFormTitle').textContent='新增打卡紀錄';
+  document.getElementById('wSubmitBtn').textContent='＋ 新增紀錄';
+  document.getElementById('wCancelBtn').style.display='none';
+}
+async function deleteWork(id){
+  const ok = await customConfirm('確定要刪除這筆工時紀錄嗎？');
+  if(!ok) return;
+  work = work.filter(w=>w.id!==id);
+  save(KEYS.work, work);
+  if(editingWorkId===id) cancelEditWork();
+  renderWork();
+}
+function renderWork(){
+  const empFilter = document.getElementById('wFilterEmployee').value;
+  const month = document.getElementById('wFilterMonth').value;
+  const filterType = document.getElementById('wFilterType').value;
+  const search = (document.getElementById('wSearch').value||'').toLowerCase();
+  let rows = work.filter(w=>{
+    const okEmp = empFilter==='all' || w.employeeId===empFilter;
+    const okMonth = !month || w.date.startsWith(month);
+    const okType = filterType==='all' || (w.type||'work')===filterType;
+    const okSearch = !search || (w.note||'').toLowerCase().includes(search);
+    return okEmp && okMonth && okType && okSearch;
+  }).sort((a,b)=> {
+    const dateCmp = b.date.localeCompare(a.date);
+    if(dateCmp !== 0) return dateCmp;
+    return (a.start||'00:00').localeCompare(b.start||'00:00');
+  });
+  const body = document.getElementById('workTableBody');
+  body.innerHTML = rows.map(w=>{
+    if(w.type==='leave'){
+      return `
+    <tr>
+      <td>${employeeName(w.employeeId)}</td>
+      <td>${w.date}</td>
+      <td><span class="tag unpaid">休假・${w.leaveType||'其他'}</span></td>
+      <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+      <td>${w.note||'—'}</td>
+      <td class="row-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editWork('${w.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteWork('${w.id}')">刪除</button>
+      </td>
+    </tr>`;
+    }
+    return `
+    <tr>
+      <td>${employeeName(w.employeeId)}</td>
+      <td>${w.date}</td>
+      <td><span class="tag done">上班</span></td>
+      <td>${w.start}</td><td>${w.end}</td>
+      <td>${w.hours.toFixed(2)} 小時</td>
+      <td>${fmtMoney(w.rate)}</td>
+      <td><b>${fmtMoney(w.pay)}</b></td>
+      <td>${w.note||'—'}</td>
+      <td class="row-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editWork('${w.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteWork('${w.id}')">刪除</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('workEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 待辦 ---------------- */
+let editingTodoId = null;
+async function addTodo(){
+  const content=document.getElementById('tContent').value.trim();
+  const due=document.getElementById('tDue').value;
+  const dueTime=document.getElementById('tDueTime').value;
+  if(!content){ await customAlert('請輸入待辦內容'); return; }
+  if(editingTodoId){
+    todo = todo.map(t=> t.id===editingTodoId? {...t, content, due, dueTime} : t);
+    cancelEditTodo();
+  } else {
+    todo.push({id:uid(), content, due, dueTime, done:false});
+  }
+  save(KEYS.todo, todo);
+  document.getElementById('tContent').value='';
+  document.getElementById('tDue').value='';
+  document.getElementById('tDueTime').value='';
+  renderTodo();
+}
+function editTodo(id){
+  const t = todo.find(x=>x.id===id);
+  if(!t) return;
+  editingTodoId = id;
+  document.getElementById('tContent').value=t.content;
+  document.getElementById('tDue').value=t.due||'';
+  document.getElementById('tDueTime').value=t.dueTime||'';
+  document.getElementById('tFormTitle').textContent='編輯待辦';
+  document.getElementById('tSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('tCancelBtn').style.display='inline-flex';
+  document.getElementById('tContent').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function cancelEditTodo(){
+  editingTodoId = null;
+  document.getElementById('tContent').value='';
+  document.getElementById('tDue').value='';
+  document.getElementById('tDueTime').value='';
+  document.getElementById('tFormTitle').textContent='新增待辦';
+  document.getElementById('tSubmitBtn').textContent='＋ 新增待辦';
+  document.getElementById('tCancelBtn').style.display='none';
+}
+function toggleTodo(id){
+  todo = todo.map(t=> t.id===id? {...t, done:!t.done} : t);
+  save(KEYS.todo, todo);
+  renderTodo();
+}
+async function deleteTodo(id){
+  const ok = await customConfirm('確定要刪除這筆待辦嗎？');
+  if(!ok) return;
+  todo = todo.filter(t=>t.id!==id);
+  save(KEYS.todo, todo);
+  if(editingTodoId===id) cancelEditTodo();
+  renderTodo();
+}
+function renderTodo(){
+  const filter = document.getElementById('tFilter').value;
+  let rows = todo.filter(t=> filter==='all' || (filter==='done'?t.done:!t.done))
+                 .sort((a,b)=> (a.due||'9999')+(a.dueTime||'00:00') > (b.due||'9999')+(b.dueTime||'00:00') ? 1 : -1);
+  const list = document.getElementById('todoList');
+  list.innerHTML = rows.map(t=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--light-pink);">
+      <div class="checkbox-row">
+        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTodo('${t.id}')">
+        <div>
+          <div style="${t.done?'text-decoration:line-through; color:var(--gray);':''}">${t.content}</div>
+          ${t.due? `<div style="font-size:.75rem; color:var(--gray); margin-top:2px;">截止：${t.due}${t.dueTime? ' '+t.dueTime:''}</div>`:''}
+        </div>
+      </div>
+      <div class="row-actions">
+        <span class="tag ${t.done?'done':'pending'}">${t.done?'已完成':'未完成'}</span>
+        <button class="btn btn-secondary btn-sm" onclick="editTodo('${t.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTodo('${t.id}')">刪除</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('todoEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 收支 ---------------- */
+let editingMoneyId = null;
+function toggleMoneyUnpaidLabel(){
+  const type = document.getElementById('mType').value;
+  document.getElementById('mUnpaidLabel').textContent = type==='in'
+    ? '這筆是「應收帳款」（客戶還沒付款）'
+    : '這筆是「應付帳款」（我還沒付款）';
+}
+async function addMoney(){
+  const date=document.getElementById('mDate').value;
+  const type=document.getElementById('mType').value;
+  const amount=parseFloat(document.getElementById('mAmount').value)||0;
+  const note=document.getElementById('mNote').value.trim();
+  const unpaid=document.getElementById('mUnpaid').checked;
+  if(!date||!amount){ await customAlert('請填寫日期與金額'); return; }
+  if(editingMoneyId){
+    money = money.map(m=> m.id===editingMoneyId? {...m, date, type, amount, note, unpaid} : m);
+    cancelEditMoney();
+  } else {
+    money.push({id:uid(), date, type, amount, note, unpaid});
+  }
+  save(KEYS.money, money);
+  document.getElementById('mDate').value='';
+  document.getElementById('mAmount').value='';
+  document.getElementById('mNote').value='';
+  document.getElementById('mUnpaid').checked=false;
+  renderMoney();
+}
+function editMoney(id){
+  const m = money.find(x=>x.id===id);
+  if(!m) return;
+  editingMoneyId = id;
+  document.getElementById('mDate').value=m.date;
+  document.getElementById('mType').value=m.type;
+  toggleMoneyUnpaidLabel();
+  document.getElementById('mAmount').value=m.amount;
+  document.getElementById('mNote').value=m.note||'';
+  document.getElementById('mUnpaid').checked=!!m.unpaid;
+  document.getElementById('mFormTitle').textContent='編輯收支記錄';
+  document.getElementById('mSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('mCancelBtn').style.display='inline-flex';
+  document.getElementById('mDate').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function cancelEditMoney(){
+  editingMoneyId = null;
+  document.getElementById('mDate').value='';
+  document.getElementById('mAmount').value='';
+  document.getElementById('mNote').value='';
+  document.getElementById('mUnpaid').checked=false;
+  document.getElementById('mType').value='in';
+  toggleMoneyUnpaidLabel();
+  document.getElementById('mFormTitle').textContent='新增一筆記錄';
+  document.getElementById('mSubmitBtn').textContent='＋ 新增記錄';
+  document.getElementById('mCancelBtn').style.display='none';
+}
+function markPaid(id){
+  money = money.map(m=> m.id===id? {...m, unpaid:false} : m);
+  save(KEYS.money, money);
+  renderMoney(); renderSummary();
+}
+async function deleteMoney(id){
+  const ok = await customConfirm('確定要刪除這筆記錄嗎？');
+  if(!ok) return;
+  money = money.filter(m=>m.id!==id);
+  save(KEYS.money, money);
+  if(editingMoneyId===id) cancelEditMoney();
+  renderMoney();
+}
+function renderMoney(){
+  const month = document.getElementById('mFilterMonth').value;
+  const type = document.getElementById('mFilterType').value;
+  const search = (document.getElementById('mSearch').value||'').toLowerCase();
+  let rows = money.filter(m=>{
+    const okMonth = !month || m.date.startsWith(month);
+    let okType;
+    if(type==='all') okType = true;
+    else if(type==='receivable') okType = m.type==='in' && m.unpaid;
+    else if(type==='payable') okType = m.type==='out' && m.unpaid;
+    else okType = m.type===type;
+    const okSearch = !search || (m.note||'').toLowerCase().includes(search);
+    return okMonth && okType && okSearch;
+  }).sort((a,b)=> b.date.localeCompare(a.date));
+  const body = document.getElementById('moneyTableBody');
+  body.innerHTML = rows.map(m=>{
+    let statusHtml, actionHtml;
+    if(m.unpaid){
+      statusHtml = m.type==='in'
+        ? '<span class="tag unpaid">應收帳款</span>'
+        : '<span class="tag unpaid">應付帳款</span>';
+      actionHtml = `<button class="btn btn-secondary btn-sm" onclick="markPaid('${m.id}')">${m.type==='in'?'標記已收':'標記已付'}</button>`;
+    } else {
+      statusHtml = m.type==='in'
+        ? '<span class="tag done">已收款</span>'
+        : '<span class="tag done">已付款</span>';
+      actionHtml = '';
+    }
+    return `
+    <tr>
+      <td>${m.date}</td>
+      <td><span class="tag ${m.type}">${m.type==='in'?'進帳':'出帳'}</span></td>
+      <td>${m.note||'—'}</td>
+      <td>${fmtMoney(m.amount)}</td>
+      <td>${statusHtml}</td>
+      <td class="row-actions">
+        ${actionHtml}
+        <button class="btn btn-secondary btn-sm" onclick="editMoney('${m.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMoney('${m.id}')">刪除</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('moneyEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 每月總帳 ---------------- */
+function renderSummary(){
+  const month = document.getElementById('sMonth').value || todayMonth();
+  document.getElementById('sMonth').value = month;
+
+  const wRows = work.filter(w=>w.date.startsWith(month));
+  const totalHours = wRows.reduce((s,w)=>s+w.hours,0);
+  const totalPay = wRows.reduce((s,w)=>s+w.pay,0);
+
+  const mRows = money.filter(m=>m.date.startsWith(month));
+  const totalIn = mRows.filter(m=>m.type==='in').reduce((s,m)=>s+m.amount,0);
+  const totalOut = mRows.filter(m=>m.type==='out').reduce((s,m)=>s+m.amount,0);
+  const receivableRows = money.filter(m=>m.type==='in' && m.unpaid);
+  const payableRows = money.filter(m=>m.type==='out' && m.unpaid);
+  const totalReceivable = receivableRows.reduce((s,m)=>s+m.amount,0);
+  const totalPayable = payableRows.reduce((s,m)=>s+m.amount,0);
+  const net = totalIn - totalOut;
+
+  const cards = document.getElementById('summaryCards');
+  cards.innerHTML = `
+    <div class="stat-card"><div class="label">本月工時</div><div class="value">${totalHours.toFixed(1)} 小時</div></div>
+    <div class="stat-card blue"><div class="label">本月薪水</div><div class="value blue">${fmtMoney(totalPay)}</div></div>
+    <div class="stat-card sage"><div class="label">本月進帳</div><div class="value sage">${fmtMoney(totalIn)}</div></div>
+    <div class="stat-card"><div class="label">本月出帳</div><div class="value pink">${fmtMoney(totalOut)}</div></div>
+    <div class="stat-card blue"><div class="label">本月淨收入</div><div class="value blue">${fmtMoney(net)}</div></div>
+    <div class="stat-card sage"><div class="label">目前應收帳款總額</div><div class="value sage">${fmtMoney(totalReceivable)}</div></div>
+    <div class="stat-card"><div class="label">目前應付帳款總額</div><div class="value pink">${fmtMoney(totalPayable)}</div></div>
+  `;
+
+  const list = document.getElementById('summaryUnpaidList');
+  const monthReceivable = receivableRows.filter(m=>m.date.startsWith(month));
+  const monthPayable = payableRows.filter(m=>m.date.startsWith(month));
+  if(monthReceivable.length===0 && monthPayable.length===0){
+    list.innerHTML = `<div class="empty-state"><div class="big">✅</div>這個月沒有應收或應付帳款</div>`;
+  } else {
+    let html = '';
+    if(monthReceivable.length){
+      html += `<div style="font-size:.82rem; color:var(--gray); margin:10px 0 4px;">應收帳款</div>`;
+      html += monthReceivable.map(m=>`
+      <div style="display:flex; justify-content:space-between; padding:10px 4px; border-bottom:1px solid var(--light-pink);">
+        <div>${m.date} · ${m.note||'未命名項目'}</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <b>${fmtMoney(m.amount)}</b>
+          <button class="btn btn-secondary btn-sm" onclick="markPaid('${m.id}'); renderSummary();">標記已收</button>
+        </div>
+      </div>`).join('');
+    }
+    if(monthPayable.length){
+      html += `<div style="font-size:.82rem; color:var(--gray); margin:14px 0 4px;">應付帳款</div>`;
+      html += monthPayable.map(m=>`
+      <div style="display:flex; justify-content:space-between; padding:10px 4px; border-bottom:1px solid var(--light-pink);">
+        <div>${m.date} · ${m.note||'未命名項目'}</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <b>${fmtMoney(m.amount)}</b>
+          <button class="btn btn-secondary btn-sm" onclick="markPaid('${m.id}'); renderSummary();">標記已付</button>
+        </div>
+      </div>`).join('');
+    }
+    list.innerHTML = html;
+  }
+}
+
+/* ---------------- 客戶預約 ---------------- */
+let editingApptId = null;
+async function addAppt(){
+  const name=document.getElementById('aName').value.trim();
+  const phone=document.getElementById('aPhone').value.trim();
+  const address=document.getElementById('aAddress').value.trim();
+  const date=document.getElementById('aDate').value;
+  const time=document.getElementById('aTime').value;
+  const service=document.getElementById('aService').value.trim();
+  if(!name||!phone||!date){ await customAlert('請至少填寫姓名、電話與日期'); return; }
+  if(editingApptId){
+    appt = appt.map(a=> a.id===editingApptId? {...a, name, phone, address, date, time, service} : a);
+    cancelEditAppt();
+  } else {
+    appt.push({id:uid(), name, phone, address, date, time, service});
+  }
+  save(KEYS.appt, appt);
+  ['aName','aPhone','aAddress','aDate','aTime','aService'].forEach(id=>document.getElementById(id).value='');
+  renderAppt();
+}
+function editAppt(id){
+  const a = appt.find(x=>x.id===id);
+  if(!a) return;
+  editingApptId = id;
+  document.getElementById('aName').value=a.name;
+  document.getElementById('aPhone').value=a.phone;
+  document.getElementById('aAddress').value=a.address||'';
+  document.getElementById('aDate').value=a.date;
+  document.getElementById('aTime').value=a.time||'';
+  document.getElementById('aService').value=a.service||'';
+  document.getElementById('aFormTitle').textContent='編輯預約';
+  document.getElementById('aSubmitBtn').textContent='💾 儲存修改';
+  document.getElementById('aCancelBtn').style.display='inline-flex';
+  document.getElementById('aName').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function cancelEditAppt(){
+  editingApptId = null;
+  ['aName','aPhone','aAddress','aDate','aTime','aService'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('aFormTitle').textContent='新增預約';
+  document.getElementById('aSubmitBtn').textContent='＋ 新增預約';
+  document.getElementById('aCancelBtn').style.display='none';
+}
+async function deleteAppt(id){
+  const ok = await customConfirm('確定要刪除這筆預約嗎？');
+  if(!ok) return;
+  appt = appt.filter(a=>a.id!==id);
+  save(KEYS.appt, appt);
+  if(editingApptId===id) cancelEditAppt();
+  renderAppt();
+}
+function renderAppt(){
+  const search = (document.getElementById('aSearch').value||'').toLowerCase();
+  let rows = appt.filter(a=> !search || a.name.toLowerCase().includes(search) || a.phone.includes(search))
+                 .sort((a,b)=> (a.date+ (a.time||'')).localeCompare(b.date+(b.time||'')));
+  const body = document.getElementById('apptTableBody');
+  body.innerHTML = rows.map(a=>`
+    <tr>
+      <td>${a.date} ${a.time||''}</td>
+      <td>${a.name}</td>
+      <td>${a.phone}</td>
+      <td>${a.service||'—'}</td>
+      <td class="row-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editAppt('${a.id}')">編輯</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAppt('${a.id}')">刪除</button>
+      </td>
+    </tr>`).join('');
+  document.getElementById('apptEmpty').style.display = rows.length? 'none':'block';
+}
+
+/* ---------------- 儀表板 ---------------- */
+function renderDashboard(){
+  const month = todayMonth();
+  const wRows = work.filter(w=>w.date.startsWith(month));
+  const totalHours = wRows.reduce((s,w)=>s+w.hours,0);
+  const totalPay = wRows.reduce((s,w)=>s+w.pay,0);
+  const mRows = money.filter(m=>m.date.startsWith(month));
+  const totalIn = mRows.filter(m=>m.type==='in').reduce((s,m)=>s+m.amount,0);
+  const totalOut = mRows.filter(m=>m.type==='out').reduce((s,m)=>s+m.amount,0);
+  const totalReceivable = money.filter(m=>m.type==='in' && m.unpaid).reduce((s,m)=>s+m.amount,0);
+  const totalPayable = money.filter(m=>m.type==='out' && m.unpaid).reduce((s,m)=>s+m.amount,0);
+  const pendingTodo = todo.filter(t=>!t.done).length;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const upcomingAppt = appt.filter(a=>a.date>=todayStr).length;
+  const progressCases = cases.filter(c=>c.status==='progress').length;
+  const quoteCases = cases.filter(c=>c.status==='quote').length;
+
+  document.getElementById('dashCards').innerHTML = `
+    <div class="stat-card"><div class="label">施工中案件</div><div class="value">${progressCases} 件</div></div>
+    <div class="stat-card blue"><div class="label">報價中案件</div><div class="value blue">${quoteCases} 件</div></div>
+    <div class="stat-card"><div class="label">本月工時</div><div class="value">${totalHours.toFixed(1)} 小時</div></div>
+    <div class="stat-card blue"><div class="label">本月薪水</div><div class="value blue">${fmtMoney(totalPay)}</div></div>
+    <div class="stat-card sage"><div class="label">本月淨收入</div><div class="value sage">${fmtMoney(totalIn-totalOut)}</div></div>
+    <div class="stat-card sage"><div class="label">應收帳款總額</div><div class="value sage">${fmtMoney(totalReceivable)}</div></div>
+    <div class="stat-card"><div class="label">應付帳款總額</div><div class="value pink">${fmtMoney(totalPayable)}</div></div>
+    <div class="stat-card blue"><div class="label">未完成待辦</div><div class="value blue">${pendingTodo} 項</div></div>
+    <div class="stat-card sage"><div class="label">即將到來的預約</div><div class="value sage">${upcomingAppt} 筆</div></div>
+  `;
+
+  const todoPrev = todo.filter(t=>!t.done).slice(0,5);
+  document.getElementById('dashTodoPreview').innerHTML = todoPrev.length? todoPrev.map(t=>`
+    <div style="padding:8px 4px; border-bottom:1px solid var(--light-pink);">${t.content} ${t.due?`<span style="color:var(--gray); font-size:.78rem;">（${t.due}）</span>`:''}</div>
+  `).join('') : `<div class="empty-state" style="padding:16px;">目前沒有待辦事項</div>`;
+
+  const apptPrev = appt.filter(a=>a.date>=todayStr).sort((a,b)=> (a.date+(a.time||'')).localeCompare(b.date+(b.time||''))).slice(0,5);
+  document.getElementById('dashApptPreview').innerHTML = apptPrev.length? apptPrev.map(a=>`
+    <div style="padding:8px 4px; border-bottom:1px solid var(--light-pink);">${a.date} ${a.time||''} · ${a.name}（${a.service||'—'}）</div>
+  `).join('') : `<div class="empty-state" style="padding:16px;">目前沒有即將到來的預約</div>`;
+}
+
+/* ---------------- 備份 ---------------- */
+function exportBackup(){
+  const data = { work, todo, money, appt, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `統包工具備份_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+async function importBackup(){
+  const file = document.getElementById('importFile').files[0];
+  if(!file){ await customAlert('請先選擇備份檔'); return; }
+  const ok = await customConfirm('匯入將會覆蓋目前所有資料，確定要繼續嗎？');
+  if(!ok) return;
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      work = data.work || []; todo = data.todo || []; money = data.money || []; appt = data.appt || [];
+      save(KEYS.work, work); save(KEYS.todo, todo); save(KEYS.money, money); save(KEYS.appt, appt);
+      initAll();
+      await customAlert('匯入成功！');
+    }catch(err){
+      await customAlert('這個檔案看起來不是有效的備份檔，請確認後再試一次。');
+    }
+  };
+  reader.readAsText(file);
+}
+async function clearAll(){
+  const ok1 = await customConfirm('確定要清空所有資料嗎？此動作無法復原，請先確認已匯出備份。');
+  if(!ok1) return;
+  const ok2 = await customConfirm('再次確認：真的要清空全部資料嗎？');
+  if(!ok2) return;
+  localStorage.removeItem(KEYS.work); localStorage.removeItem(KEYS.todo);
+  localStorage.removeItem(KEYS.money); localStorage.removeItem(KEYS.appt);
+  work=[]; todo=[]; money=[]; appt=[];
+  initAll();
+  await customAlert('已清空所有資料。');
+}
+
+/* ---------------- 初始化 ---------------- */
+function initAll(){
+  document.getElementById('wFilterMonth').value = todayMonth();
+  document.getElementById('mFilterMonth').value = todayMonth();
+  document.getElementById('sMonth').value = todayMonth();
+  document.getElementById('clType').value = 'daily';
+  toggleCaseLogFields();
+  renderEmployees();
+  renderCases();
+  renderQuoteItemRows();
+  renderQuotes();
+  renderProgress();
+  renderMaterials();
+  renderTeamPayments();
+  renderDashboard(); renderWork(); renderClockStatus(); renderTodo(); renderMoney(); renderSummary(); renderAppt();
+}
+initAll();
+</script>
+</body>
+</html>
