@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --pink:#C9938A; --soft-pink:#E8C4BC; --light-pink:#F5E6E3;
@@ -1159,11 +1160,17 @@
 
       <div class="section-box">
         <h3>匯出備份</h3>
-        <p style="font-size:.85rem; color:var(--medium); margin-bottom:14px;">將所有資料下載成一個備份檔，建議存到雲端硬碟或寄一份到自己信箱。</p>
-        <button class="btn btn-secondary" onclick="exportBackup()">⬇️ 匯出備份檔</button>
+        <p style="font-size:.85rem; color:var(--medium); margin-bottom:14px;">將所有資料下載成一個備份檔，建議存到雲端硬碟或寄一份到自己信箱。這個檔案是給這個工具自己「匯入」用的，不是給人閱讀的格式。</p>
+        <button class="btn btn-secondary" onclick="exportBackup()">⬇️ 匯出備份檔（給匯入用）</button>
         <div class="honesty" style="margin-top:12px;">
           ⚠️ 如果是從 LINE、Facebook、IG 等 App 裡面點連結打開的，匯出功能可能會沒反應——這是那些 App 內建瀏覽器的限制，不是故障。請點畫面右上角「⋯」或分享圖示，選「在瀏覽器中開啟」（Safari／Chrome），改用手機正常的瀏覽器打開這個網址後再匯出。
         </div>
+      </div>
+
+      <div class="section-box">
+        <h3>匯出 Excel 表格</h3>
+        <p style="font-size:.85rem; color:var(--medium); margin-bottom:14px;">把所有資料整理成一份 Excel 檔案（.xlsx），每種資料各自一個分頁，可以直接用 Excel／Numbers／Google 試算表打開瀏覽。這份檔案只能用來看，沒辦法再匯入回工具裡。</p>
+        <button class="btn btn-secondary" onclick="exportExcel()">📊 匯出 Excel 表格</button>
       </div>
 
       <div class="section-box">
@@ -3266,6 +3273,85 @@ function exportBackup(){
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+function exportExcel(){
+  if(typeof XLSX === 'undefined'){
+    customAlert('Excel 匯出功能需要連上網路才能載入，請確認網路連線後再試一次。');
+    return;
+  }
+  const caseLabel = id => { const c = cases.find(x=>x.id===id); return c? `${c.customer} - ${c.name}` : (id||''); };
+  const teamLabel = id => { const t = teams.find(x=>x.id===id); return t? t.name : (id||''); };
+  const empLabel = id => { const e = employees.find(x=>x.id===id); return e? e.name : (id||''); };
+  const yn = b => b ? '是' : '否';
+  const caseStatusLabel = { quote:'報價中', progress:'施工中', done:'已完工' };
+  const progressStatusLabel = { pending:'待處理', doing:'進行中', done:'已完成' };
+  const moneyTypeLabel = { in:'進帳', out:'出帳' };
+  const workTypeLabel = { work:'上班', leave:'休假' };
+  const caseLogTypeLabel = { daily:'工程日誌', issue:'問題／異常', change:'客戶變更', contact:'客戶聯絡' };
+  const caseLogDataText = log => {
+    if(!log.data) return '';
+    return Object.entries(log.data).map(([k,v])=>`${k}:${v}`).join('；');
+  };
+
+  const wb = XLSX.utils.book_new();
+  const addSheet = (name, headers, rows) => {
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  };
+
+  addSheet('案件', ['編號','客戶姓名','案件名稱','電話','地址','狀態','預計完工日','施工進度(%)','工程總價','已收金額','其他成本','備註'],
+    cases.map(c=>[c.id,c.customer,c.name,c.phone,c.address,caseStatusLabel[c.status]||c.status,c.dueDate,c.progress,c.contract,c.received,c.otherCost,c.note]));
+
+  addSheet('報價單', ['編號','所屬案件','報價日期','報價總額','項目明細'],
+    quotes.map(q=>[q.id, caseLabel(q.caseId), q.date, q.total, (q.items||[]).map(i=>`${i.name} x NT$${i.amount}`).join('；')]));
+
+  addSheet('工程進度', ['編號','所屬案件','階段名稱','狀態'],
+    progressSteps.map(p=>[p.id, caseLabel(p.caseId), p.name, progressStatusLabel[p.status]||p.status]));
+
+  addSheet('材料採購', ['編號','所屬案件','材料名稱','供應商','數量','單價','小計','已付款','已到貨'],
+    materials.map(m=>[m.id, caseLabel(m.caseId), m.name, m.supplier, m.qty, m.price, (m.qty||0)*(m.price||0), yn(m.paid), yn(m.delivered)]));
+
+  addSheet('工班名單', ['編號','工班名稱','電話'], teams.map(t=>[t.id, t.name, t.phone]));
+
+  addSheet('工資記錄', ['編號','工班','所屬案件','日期','金額','已付款'],
+    teamPayments.map(p=>[p.id, teamLabel(p.teamId), caseLabel(p.caseId), p.date, p.amount, yn(p.paid)]));
+
+  addSheet('收款記錄', ['編號','所屬案件','期別名稱','金額','已收款'],
+    payments.map(p=>[p.id, caseLabel(p.caseId), p.name, p.amount, yn(p.received)]));
+
+  addSheet('追加項目', ['編號','所屬案件','項目名稱','金額','客戶已確認'],
+    changeOrders.map(c=>[c.id, caseLabel(c.caseId), c.name, c.amount, yn(c.confirmed)]));
+
+  addSheet('工程日誌', ['編號','所屬案件','日期','類型','內容'],
+    caseLogs.map(l=>[l.id, caseLabel(l.caseId), l.date, caseLogTypeLabel[l.type]||l.type, caseLogDataText(l)]));
+
+  addSheet('保固紀錄', ['編號','所屬案件','完工日','保固期間(月)','保固到期日','備註'],
+    warranties.map(w=>[w.id, caseLabel(w.caseId), w.completionDate, w.months, w.endDate, w.note]));
+
+  addSheet('保固維修紀錄', ['編號','所屬案件','日期','問題描述','已處理'],
+    warrantyClaims.map(c=>[c.id, caseLabel(c.caseId), c.date, c.desc, yn(c.resolved)]));
+
+  addSheet('清運紀錄', ['編號','所屬案件','種類','數量','清運日期','業者','清運費','已付款'],
+    waste.map(w=>[w.id, caseLabel(w.caseId), w.type, w.qty, w.date, w.vendor, w.fee, yn(w.paid)]));
+
+  addSheet('合約文件', ['編號','所屬案件','文件名稱','狀態','日期','備註'],
+    contracts.map(c=>[c.id, caseLabel(c.caseId), c.name, c.status, c.date, c.note]));
+
+  addSheet('員工名單', ['編號','姓名','時薪'], employees.filter(e=>!e.deleted).map(e=>[e.id, e.name, e.rate]));
+
+  addSheet('工時薪水', ['編號','員工','日期','類型','上班時間','下班時間','時數','時薪','薪水','備註'],
+    work.map(w=>[w.id, empLabel(w.employeeId), w.date, workTypeLabel[w.type]||w.type, w.start, w.end, w.hours, w.rate, w.pay, w.note]));
+
+  addSheet('待辦事項', ['編號','內容','截止日期','截止時間','已完成'],
+    todo.map(t=>[t.id, t.content, t.due, t.dueTime, yn(t.done)]));
+
+  addSheet('收支記錄', ['編號','日期','類型','金額','項目說明','應收/應付帳款'],
+    money.map(m=>[m.id, m.date, moneyTypeLabel[m.type]||m.type, m.amount, m.note, yn(m.unpaid)]));
+
+  addSheet('客戶預約', ['編號','客戶姓名','電話','地址','預約日期','預約時間','服務項目'],
+    appt.map(a=>[a.id, a.name, a.phone, a.address, a.date, a.time, a.service]));
+
+  XLSX.writeFile(wb, `統包工具資料_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 async function importBackup(){
   const file = document.getElementById('importFile').files[0];
