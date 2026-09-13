@@ -1159,27 +1159,29 @@
       </div>
 
       <div class="section-box">
-        <h3>匯出備份</h3>
-        <p style="font-size:.85rem; color:var(--medium); margin-bottom:14px;">將所有資料下載成一個備份檔，建議存到雲端硬碟或寄一份到自己信箱。這個檔案是給這個工具自己「匯入」用的，不是給人閱讀的格式。</p>
-        <button class="btn btn-secondary" onclick="exportBackup()">⬇️ 匯出備份檔（給匯入用）</button>
-        <div class="honesty" style="margin-top:12px;">
-          ⚠️ 如果是從 LINE、Facebook、IG 等 App 裡面點連結打開的，匯出功能可能會沒反應——這是那些 App 內建瀏覽器的限制，不是故障。請點畫面右上角「⋯」或分享圖示，選「在瀏覽器中開啟」（Safari／Chrome），改用手機正常的瀏覽器打開這個網址後再匯出。
-        </div>
-      </div>
-
-      <div class="section-box">
         <h3>匯出 Excel 表格</h3>
         <p style="font-size:.85rem; color:var(--medium); margin-bottom:14px;">把所有資料整理成一份 Excel 檔案（.xlsx），每種資料各自一個分頁，可以直接用 Excel／Numbers／Google 試算表打開瀏覽。這份檔案只能用來看，沒辦法再匯入回工具裡。</p>
         <button class="btn btn-secondary" onclick="exportExcel()">📊 匯出 Excel 表格</button>
       </div>
 
       <div class="section-box">
-        <h3>匯入備份</h3>
-        <p style="font-size:.85rem; color:var(--medium); margin-bottom:14px;">選擇先前匯出的備份檔，還原所有資料（會覆蓋目前的資料，請先確認）。</p>
-        <div class="backup-box">
-          <input type="file" id="importFile" accept=".json" style="max-width:280px;">
-          <button class="btn btn-outline" onclick="importBackup()">⬆️ 匯入備份檔</button>
-        </div>
+        <details>
+          <summary style="cursor:pointer; font-weight:700; font-size:1rem;">進階：救援用備份（AI 或自己不小心改壞資料時，用這個救回來）</summary>
+          <div style="margin-top:14px;">
+            <p style="font-size:.85rem; color:var(--medium); margin-bottom:14px;">這裡的備份檔不是給人看的，是專門給這個工具自己「讀回去」用的救援檔案，平常不用理它，建議定期匯出一份存到雲端硬碟或寄到自己信箱，以防萬一。</p>
+            <button class="btn btn-secondary" onclick="exportBackup()">⬇️ 匯出救援備份檔</button>
+            <div class="honesty" style="margin-top:12px;">
+              ⚠️ 如果是從 LINE、Facebook、IG 等 App 裡面點連結打開的，匯出功能可能會沒反應——這是那些 App 內建瀏覽器的限制，不是故障。請點畫面右上角「⋯」或分享圖示，選「在瀏覽器中開啟」（Safari／Chrome），改用手機正常的瀏覽器打開這個網址後再匯出。
+            </div>
+            <div style="margin-top:16px;">
+              <p style="font-size:.85rem; color:var(--medium); margin-bottom:10px;">選擇先前匯出的救援備份檔，還原所有資料（會覆蓋目前的資料，請先確認）。</p>
+              <div class="backup-box">
+                <input type="file" id="importFile" accept=".json" style="max-width:280px;">
+                <button class="btn btn-outline" onclick="importBackup()">⬆️ 匯入救援備份檔</button>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
 
       <div class="section-box">
